@@ -1,3 +1,4 @@
+import { applyOverridesToProducts } from "./product-overrides";
 import { type Companion, type Product } from "./products";
 
 const SHEET_ID = "1UUnQxlLuPAc5fVfTI277w9ByxFSwrD2giYkoXIPC7sI";
@@ -344,7 +345,8 @@ export async function getLobbyProductsCached(): Promise<CacheEntry> {
   if (cache && now - cache.at < CACHE_TTL_MS) return cache;
 
   const fromSheets = await fetchFromSheets();
-  const products = fromSheets && fromSheets.length > 0 ? fromSheets : FALLBACK_PRODUCTS;
+  const rawProducts = fromSheets && fromSheets.length > 0 ? fromSheets : FALLBACK_PRODUCTS;
+  const products = applyOverridesToProducts(rawProducts);
 
   cache = {
     at: now,

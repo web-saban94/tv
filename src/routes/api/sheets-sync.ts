@@ -1,10 +1,35 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import {
+  applyOverridesToProducts,
+  clearAllOverrides,
+  clearOverride,
+  getAllOverrides,
+  setOverride,
+} from "@/lib/product-overrides";
+
 export const DEFAULT_APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxxMuFP5evxDx8vxd3BfCQgx73H88KTOB87AzbiCAEx69UVJE1qmoCMyF9KM9qljvAX/exec";
 
 interface SheetSyncPayload {
-  action: "append_order" | "log_chat" | "ping";
+  action?:
+    | "append_order"
+    | "log_chat"
+    | "ping"
+    | "update_product"
+    | "update"
+    | "batch_update"
+    | "clear_override"
+    | "clear_all_overrides";
+  sku?: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  tdsUrl?: string;
+  saleTag?: string;
+  coverageM2?: number | null;
+  coverageNote?: string;
+  activeInSignage?: boolean;
+  items?: unknown[];
   order?: {
     id: string;
     sku: string;
@@ -39,7 +64,22 @@ interface SheetSyncPayload {
 export const Route = createFileRoute("/api/sheets-sync")({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
+        const url = new URL(request.url);
+        const action = url.searchParams.get("action");
+
+        // Action: Return all stored overrides
+        if (action === "overrides") {
+          return new Response(
+            JSON.stringify({
+              status: "success",
+              overrides: getAllOverrides(),
+              timestamp: new Date().toISOString(),
+            }),
+            { headers: { "Content-Type": "application/json" } },
+          );
+        }
+
         const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL || DEFAULT_APPS_SCRIPT_URL;
         try {
           // Check ping on Google Apps Script
@@ -56,8 +96,25 @@ export const Route = createFileRoute("/api/sheets-sync")({
           });
           const prodData = (await prodRes.json().catch(() => null)) as {
             count?: number;
-            products?: unknown[];
+            products?: Array<{ sku: string }>;
           } | null;
+
+          const rawProducts = prodData?.products || [];
+          const productsWithOverrides = applyOverridesToProducts(rawProducts);
+
+          // If caller explicitly asked for products
+          if (action === "products" || action === "catalog") {
+            return new Response(
+              JSON.stringify({
+                status: "success",
+                count: productsWithOverrides.length,
+                products: productsWithOverrides,
+                overrides: getAllOverrides(),
+                timestamp: new Date().toISOString(),
+              }),
+              { headers: { "Content-Type": "application/json" } },
+            );
+          }
 
           return new Response(
             JSON.stringify({
@@ -65,7 +122,8 @@ export const Route = createFileRoute("/api/sheets-sync")({
               webhookUrl,
               timestamp: new Date().toISOString(),
               ping: pingData,
-              catalogCount: prodData?.count ?? 0,
+              catalogCount: productsWithOverrides.length || prodData?.count || 0,
+              overridesCount: Object.keys(getAllOverrides()).length,
               sheets: [
                 "📊 דשבורד_בקרה",
                 "📦 קטלוג_מוצרים",
@@ -85,6 +143,7 @@ export const Route = createFileRoute("/api/sheets-sync")({
               status: "degraded",
               webhookUrl,
               error: String(err),
+              overrides: getAllOverrides(),
               message: "Apps Script URL configured, ping failed",
             }),
             {
@@ -98,6 +157,124 @@ export const Route = createFileRoute("/api/sheets-sync")({
         try {
           const body = (await request.json()) as SheetSyncPayload;
           const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL || DEFAULT_APPS_SCRIPT_URL;
+
+          // 0. Clear override if requested
+          if (body.action === "clear_override" && body.sku) {
+            const cleared = clearOverride(body.sku);
+            return new Response(
+              JSON.stringify({
+                success: true,
+                sku: body.sku,
+                cleared,
+                message: `העדכון המקומי של מוצר #${body.sku} אופס`,
+              }),
+              { headers: { "Content-Type": "application/json" } },
+            );
+          }
+
+          if (body.action === "clear_all_overrides") {
+            clearAllOverrides();
+            return new Response(
+              JSON.stringify({
+                success: true,
+                message: "כל העדכונים המקומיים אופסו",
+              }),
+              { headers: { "Content-Type": "application/json" } },
+            );
+          }
+
+          // 1. Update product in Google Sheets via Apps Script and persist on server
+          if (
+            body.action === "update_product" ||
+            body.action === "update" ||
+            (body.sku && !body.order)
+          ) {
+            // Save to persistent server store immediately
+            const savedOverride = setOverride(body.sku, {
+              imageUrl: body.imageUrl,
+              videoUrl: body.videoUrl,
+              tdsUrl: body.tdsUrl,
+              saleTag: body.saleTag,
+              coverageM2: body.coverageM2,
+              coverageNote: body.coverageNote,
+              activeInSignage: body.activeInSignage,
+            });
+
+            try {
+              const productPayload = {
+                action: "update_product",
+                type: "update_product",
+                sku: body.sku,
+                imageUrl: body.imageUrl,
+                videoUrl: body.videoUrl,
+                tdsUrl: body.tdsUrl,
+                saleTag: body.saleTag,
+                coverageM2: body.coverageM2,
+                coverageNote: body.coverageNote,
+                activeInSignage: body.activeInSignage,
+                timestamp: new Date().toISOString(),
+              };
+
+              const scriptRes = await fetch(webhookUrl, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(productPayload),
+                redirect: "follow",
+                signal: AbortSignal.timeout(6000),
+              });
+
+              const scriptData = (await scriptRes.json().catch(() => null)) as {
+                success?: boolean;
+                status?: string;
+                error?: string;
+                message?: string;
+              } | null;
+
+              const isScriptSuccess = Boolean(
+                scriptData &&
+                (scriptData.status === "success" || scriptData.success === true) &&
+                !scriptData.error,
+              );
+
+              const isUnknownPayload = scriptData?.error === "Unknown payload type";
+
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  syncedToGoogleSheet: isScriptSuccess,
+                  persistedLocally: true,
+                  sku: body.sku,
+                  override: savedOverride,
+                  result: scriptData,
+                  needsAppsScriptUpdate: isUnknownPayload,
+                  message: isScriptSuccess
+                    ? `מוצר #${body.sku} הוזרק בהצלחה ל-Google Sheets ונשמר!`
+                    : isUnknownPayload
+                      ? `מוצר #${body.sku} נשמר במערכת (הסקריפט ב-Google Sheets דורש עדכון קוד Code.gs)`
+                      : `מוצר #${body.sku} נשמר בשרת ובמכשיר`,
+                }),
+                { headers: { "Content-Type": "application/json" } },
+              );
+            } catch (updateErr) {
+              console.warn(
+                "Could not forward product update to Google Sheets Apps Script:",
+                updateErr,
+              );
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  syncedToGoogleSheet: false,
+                  storedLocally: true,
+                  persistedLocally: true,
+                  sku: body.sku,
+                  override: savedOverride,
+                  error: String(updateErr),
+                  message: `מוצר #${body.sku} נשמר בשרת ובמכשיר`,
+                }),
+                { headers: { "Content-Type": "application/json" } },
+              );
+            }
+          }
 
           // 1. Log chat to Apps Script
           if (body.action === "log_chat" && body.chat) {
