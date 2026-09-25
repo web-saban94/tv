@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ח. סבן 1994 | ניהול תוכן ומדיה לשילוט (CMS)</title>
+  
+  <!-- Fonts: Heebo & Rubik -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Heebo', 'system-ui', 'sans-serif'],
+            display: ['Rubik', 'Heebo', 'sans-serif'],
+          },
+          colors: {
+            saban: {
+              yellow: '#f59e0b',
+              gold: '#fbbf24',
+              dark: '#0f172a',
+              card: '#ffffff',
+              accent: '#2563eb',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .custom-pulse {
+      animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.9); }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900 font-sans antialiased min-h-screen flex flex-col selection:bg-amber-100 selection:text-amber-900">
+
+  <!-- ========================================================================= -->
+  <!-- 1. Header עליון כהה ומלוטש עם מיתוג סבן -->
+  <!-- ========================================================================= -->
+  <header class="bg-zinc-950 text-white border-b border-zinc-800 sticky top-0 z-40 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 sm:h-20">
+        
+        <!-- לוגו וכותרת -->
+        <div class="flex items-center gap-3 sm:gap-4">
+          <div class="w-10 h-10 sm:w-12 sm:h-12 bg-amber-400 text-zinc-950 font-display font-black text-xl sm:text-2xl rounded-xl flex items-center justify-center shadow-md shadow-amber-400/20 border-2 border-amber-300">
+            ס
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-display font-black text-lg sm:text-xl tracking-tight text-white">ח. סבן חומרי בניין</span>
+              <span class="bg-amber-400/20 text-amber-300 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-400/30">1994 בע״מ</span>
+            </div>
+            <p class="text-xs sm:text-sm text-zinc-400 font-normal">ניהול והזרקת מדיה לגיליון שילוט ('📦 קטלוג_מוצרים')</p>
+          </div>
+        </div>
+
+        <!-- מונה וסטטוס חיבור -->
+        <div class="flex items-center gap-2 sm:gap-4">
+          
+          <!-- מונה מוצרים -->
+          <div class="hidden md:flex items-center gap-3 bg-zinc-900/90 border border-zinc-800 rounded-xl px-3.5 py-1.5 text-xs text-zinc-300">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="package" class="w-4 h-4 text-amber-400"></i>
+              <span>סה״כ:</span>
+              <strong id="header-total-count" class="text-white font-bold text-sm">--</strong>
+            </div>
+            <span class="text-zinc-600">|</span>
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="tv" class="w-4 h-4 text-emerald-400"></i>
+              <span>פעיל בשילוט:</span>
+              <strong id="header-active-count" class="text-emerald-400 font-bold text-sm">--</strong>
+            </div>
+          </div>
+
+          <!-- סטטוס חיבור API -->
+          <div id="connection-status-badge" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 text-xs px-3 py-1.5 rounded-xl cursor-pointer hover:border-zinc-700 transition-colors" onclick="openApiConfigModal()" title="לחץ לשינוי כתובת ה-API">
+            <span id="connection-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 custom-pulse"></span>
+            <span id="connection-status-text" class="text-zinc-300 hidden sm:inline">מחובר ל-API</span>
+            <i data-lucide="settings" class="w-3.5 h-3.5 text-zinc-400"></i>
+          </div>
+
+          <!-- כפתור רענון מגיליון -->
+          <button onclick="fetchCatalogFromSheets(true)" id="btn-refresh" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all active:scale-95 border border-zinc-700 shadow-xs" title="רענן מגיליון Google Sheets">
+            <i data-lucide="refresh-cw" id="icon-refresh" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">רענן גיליון</span>
+          </button>
+
+          <!-- כפתור מעבר למסך שילוט -->
+          <a href="/" target="_blank" class="bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs sm:text-sm px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95">
+            <i data-lucide="monitor" class="w-4 h-4"></i>
+            <span class="hidden md:inline">תצוגת שילוט</span>
+          </a>
+
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 2. סרגל עליון: חיפוש, סינונים וסטטיסטיקת כיסוי מדיה -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- באנר התקדמות מדיה כולל -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <h2 class="font-display font-bold text-slate-900 text-base sm:text-lg">מדד מוכנות קטלוג לשילוט דיגיטלי</h2>
+            <span id="readiness-percent" class="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold px-2 py-0.5 rounded-full">0% מוכן</span>
+          </div>
+          <p class="text-xs text-slate-500">
+            הזרקת קישורי תמונה (עמודה T), סרטוני YouTube (עמודה U) ו-TDS טכני (עמודה V) לגיליון '📦 קטלוג_מוצרים'.
+          </p>
+        </div>
+
+        <!-- מדדי כיסוי מהירים -->
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs">
+            <i data-lucide="image" class="w-4 h-4 text-emerald-600"></i>
+            <span class="text-slate-600">תמונות:</span>
+            <strong id="stat-images-count" class="font-bold text-slate-800">--</strong>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs">
+            <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i>
+            <span class="text-slate-600">סרטונים:</span>
+            <strong id="stat-videos-count" class="font-bold text-slate-800">--</strong>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2 text-xs">
+            <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+            <span class="text-slate-600">דפי TDS:</span>
+            <strong id="stat-tds-count" class="font-bold text-slate-800">--</strong>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- פס התקדמות ויזואלי -->
+      <div class="w-full bg-slate-100 rounded-full h-2 mt-4 overflow-hidden flex">
+        <div id="progress-bar-images" class="bg-emerald-500 h-2 transition-all duration-500" style="width: 0%" title="תמונות"></div>
+        <div id="progress-bar-videos" class="bg-red-500 h-2 transition-all duration-500" style="width: 0%" title="סרטונים"></div>
+        <div id="progress-bar-tds" class="bg-blue-500 h-2 transition-all duration-500" style="width: 0%" title="דפי מידע"></div>
+      </div>
+    </div>
+
+    <!-- תיבת חיפוש וסרגלי סינון -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+      
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        
+        <!-- שדה חיפוש חי -->
+        <div class="relative flex-1">
+          <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+            <i data-lucide="search" class="w-5 h-5"></i>
+          </div>
+          <input
+            type="text"
+            id="search-input"
+            oninput="handleSearchChange()"
+            placeholder="חיפוש מהיר לפי מק״ט, שם מוצר או מותג (לדוגמה: 10701, סיקה, כרמית, גבס)..."
+            class="w-full pl-10 pr-11 py-2.5 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 text-sm transition-all"
+          />
+          <button
+            id="btn-clear-search"
+            onclick="clearSearch()"
+            class="hidden absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 hover:text-slate-600"
+          >
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- סינון לפי מותג -->
+        <div class="flex items-center gap-2">
+          <label for="brand-select" class="text-xs font-semibold text-slate-600 whitespace-nowrap">מותג:</label>
+          <select
+            id="brand-select"
+            onchange="handleBrandChange()"
+            class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 font-medium"
+          >
+            <option value="ALL">כל המותגים (הכל)</option>
+            <option value="סיקה">סיקה (Sika)</option>
+            <option value="כרמית">כרמית מיסטר פיקס</option>
+            <option value="טמבור">טמבור</option>
+            <option value="אורבונד">אורבונד</option>
+            <option value="קנאוף">קנאוף (Knauf)</option>
+            <option value="נשר">נשר מלט</option>
+            <option value="איטונג">איטונג</option>
+            <option value="ח. סבן">ח. סבן</option>
+          </select>
+        </div>
+
+        <!-- החלפת תצוגה (כרטיסיות / טבלה) -->
+        <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 self-end sm:self-auto">
+          <button id="view-grid-btn" onclick="setViewMode('grid')" class="p-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-medium text-xs flex items-center gap-1 transition-all" title="תצוגת כרטיסיות">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">כרטיסיות</span>
+          </button>
+          <button id="view-table-btn" onclick="setViewMode('table')" class="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 font-medium text-xs flex items-center gap-1 transition-all" title="תצוגת טבלה">
+            <i data-lucide="list" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">טבלה</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- טאבים לסינון לפי סטטוס מוכנות -->
+      <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+        <span class="text-xs font-semibold text-slate-500 ml-1">סינון מהיר:</span>
+        
+        <button onclick="setStatusFilter('ALL')" id="filter-tab-ALL" class="filter-tab active-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-zinc-900 text-white">
+          הכל (<span id="count-filter-all">0</span>)
+        </button>
+        
+        <button onclick="setStatusFilter('MISSING_IMAGE')" id="filter-tab-MISSING_IMAGE" class="filter-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1">
+          <i data-lucide="image-off" class="w-3.5 h-3.5 text-amber-600"></i>
+          חסר תמונה (<span id="count-filter-no-image">0</span>)
+        </button>
+
+        <button onclick="setStatusFilter('MISSING_VIDEO')" id="filter-tab-MISSING_VIDEO" class="filter-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1">
+          <i data-lucide="video-off" class="w-3.5 h-3.5 text-red-500"></i>
+          חסר סרטון YouTube (<span id="count-filter-no-video">0</span>)
+        </button>
+
+        <button onclick="setStatusFilter('MISSING_TDS')" id="filter-tab-MISSING_TDS" class="filter-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1">
+          <i data-lucide="file-question" class="w-3.5 h-3.5 text-blue-500"></i>
+          חסר TDS (<span id="count-filter-no-tds">0</span>)
+        </button>
+
+        <button onclick="setStatusFilter('READY_FOR_SIGNAGE')" id="filter-tab-READY_FOR_SIGNAGE" class="filter-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+          מוכן מלא לשילוט ✨ (<span id="count-filter-ready">0</span>)
+        </button>
+
+        <button onclick="setStatusFilter('ACTIVE_ONLY')" id="filter-tab-ACTIVE_ONLY" class="filter-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1">
+          <i data-lucide="tv" class="w-3.5 h-3.5 text-emerald-600"></i>
+          פעיל בשילוט בלבד (<span id="count-filter-active">0</span>)
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 3. תצוגת רשימת המוצרים (Grid Cards / Table) -->
+    <!-- ========================================================================= -->
+    
+    <!-- מצב טעינה (Loading skeleton) -->
+    <div id="loading-state" class="hidden py-16 flex flex-col items-center justify-center gap-4">
+      <div class="w-12 h-12 border-4 border-slate-200 border-t-amber-500 rounded-full animate-spin"></div>
+      <p class="text-slate-600 text-sm font-medium">טוען קטלוג מוצרים מ-Google Sheets...</p>
+    </div>
+
+    <!-- מצב ריק (Empty state) -->
+    <div id="empty-state" class="hidden bg-white border border-slate-200/80 rounded-2xl p-12 text-center space-y-3">
+      <div class="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+        <i data-lucide="search-x" class="w-7 h-7"></i>
+      </div>
+      <h3 class="font-display font-bold text-slate-900 text-lg">לא נמצאו מוצרים התואמים את החיפוש</h3>
+      <p class="text-slate-500 text-sm max-w-md mx-auto">נסה לאפס את הסינונים או לשנות את מילת החיפוש.</p>
+      <button onclick="resetFilters()" class="mt-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all">
+        איפוס כל הסינונים
+      </button>
+    </div>
+
+    <!-- תצוגת כרטיסיות (Grid Cards) -->
+    <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+      <!-- כרטיסיות יוזרקו דינמית על ידי JS -->
+    </div>
+
+    <!-- תצוגת טבלה (Table View) -->
+    <div id="products-table-container" class="hidden bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-right text-sm">
+          <thead class="bg-slate-100/80 text-slate-700 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th class="py-3 px-4">תמונה</th>
+              <th class="py-3 px-4">מק״ט (🔒)</th>
+              <th class="py-3 px-4">שם המוצר</th>
+              <th class="py-3 px-4">מותג</th>
+              <th class="py-3 px-4">תגית מבצע</th>
+              <th class="py-3 px-4">כושר כיסוי</th>
+              <th class="py-3 px-4 text-center">מדיה (תמונה / וידאו / TDS)</th>
+              <th class="py-3 px-4 text-center">פעיל בשילוט?</th>
+              <th class="py-3 px-4 text-center">פעולות</th>
+            </tr>
+          </thead>
+          <tbody id="products-table-body" class="divide-y divide-slate-100 text-slate-800">
+            <!-- שורות טבלה יוזרקו דינמית -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 4. מודאל / פאנל עריכה ייעודי לעדכון מדיה ותוכן -->
+  <!-- ========================================================================= -->
+  <div id="edit-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 my-8">
+      
+      <!-- כותרת המודאל (מק"ט ושם מוצר נעולים לקריאה בלבד) -->
+      <div class="bg-zinc-950 text-white p-5 sm:p-6 border-b border-zinc-800 flex items-start justify-between">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="bg-amber-400 text-zinc-950 font-mono font-bold text-xs px-2.5 py-0.5 rounded-md flex items-center gap-1">
+              <i data-lucide="lock" class="w-3 h-3"></i>
+              מק״ט: <span id="modal-sku">--</span>
+            </span>
+            <span id="modal-brand" class="bg-zinc-800 text-zinc-300 text-xs px-2 py-0.5 rounded-md">--</span>
+            <span id="modal-category" class="text-zinc-400 text-xs hidden sm:inline">--</span>
+          </div>
+          <h2 id="modal-name" class="font-display font-bold text-lg sm:text-xl text-white tracking-tight">--</h2>
+          <p class="text-xs text-zinc-400 flex items-center gap-1">
+            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i>
+            מק״ט ושם מוצר נעולים לקריאה בלבד (Read-Only ERP). עדכן מדיה ותוכן לשילוט מטה:
+          </p>
+        </div>
+
+        <button onclick="closeEditModal()" class="text-zinc-400 hover:text-white p-2 rounded-xl hover:bg-zinc-800 transition-colors" title="סגור">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- גוף הטופס לעריכה -->
+      <form id="edit-form" onsubmit="handleFormSubmit(event)" class="p-5 sm:p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        
+        <!-- ============================================== -->
+        <!-- א. קישור לתמונה (עמודה T) + Live Preview מיידי -->
+        <!-- ============================================== -->
+        <div class="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <label for="input-image-url" class="font-bold text-sm text-slate-800 flex items-center gap-2">
+              <i data-lucide="image" class="w-4 h-4 text-emerald-600"></i>
+              קישור לתמונה ראשית (עמודה T - Image URL)
+            </label>
+            <span class="text-xs text-slate-400">PNG, JPG, WebP</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+            
+            <div class="md:col-span-8 space-y-2">
+              <input
+                type="url"
+                id="input-image-url"
+                oninput="updateImageLivePreview()"
+                placeholder="https://example.com/images/product.jpg"
+                class="w-full px-3.5 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm font-mono dir-ltr"
+              />
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" onclick="testOpenUrl('input-image-url')" class="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium">
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                  בדוק תמונה בלשונית חדשה
+                </button>
+                <span class="text-slate-300">|</span>
+                <button type="button" onclick="clearInputField('input-image-url'); updateImageLivePreview();" class="text-xs text-rose-600 hover:underline font-medium">
+                  נקה קישור
+                </button>
+              </div>
+            </div>
+
+            <!-- חלון Live Preview לתמונה -->
+            <div class="md:col-span-4 flex flex-col items-center justify-center">
+              <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-xl border border-slate-200 bg-white overflow-hidden flex items-center justify-center p-1 shadow-xs relative">
+                <img
+                  id="image-live-preview"
+                  src=""
+                  alt="תצוגה מקדימה"
+                  class="w-full h-full object-contain hidden"
+                  onload="this.classList.remove('hidden'); document.getElementById('image-preview-fallback').classList.add('hidden');"
+                  onerror="this.classList.add('hidden'); document.getElementById('image-preview-fallback').classList.remove('hidden');"
+                />
+                <div id="image-preview-fallback" class="text-center p-2 text-slate-400 flex flex-col items-center justify-center">
+                  <i data-lucide="image" class="w-6 h-6 mb-1 text-slate-300"></i>
+                  <span class="text-[10px] leading-tight">אין תמונה / קישור שגוי</span>
+                </div>
+              </div>
+              <span class="text-[10px] text-slate-500 mt-1 font-medium">Live Preview</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ב. קישור לסרטון הדרכה YouTube (עמודה U) + Embed Player -->
+        <!-- ============================================== -->
+        <div class="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3">
+          <div class="flex items-center justify-between">
+            <label for="input-video-url" class="font-bold text-sm text-slate-800 flex items-center gap-2">
+              <i data-lucide="youtube" class="w-4 h-4 text-red-600"></i>
+              קישור לסרטון הדרכה (YouTube URL - עמודה U)
+            </label>
+            <span class="text-xs text-slate-400">תומך youtu.be, watch?v=, shorts</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="relative">
+              <input
+                type="text"
+                id="input-video-url"
+                oninput="updateYoutubeLivePreview()"
+                placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ או מזהה סרטון"
+                class="w-full px-3.5 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm font-mono dir-ltr"
+              />
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+              <span id="youtube-id-status" class="text-slate-500 flex items-center gap-1 font-medium">
+                <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
+                מזהה סרטון: <strong id="youtube-extracted-id" class="font-mono text-slate-800">טרם הוגדר</strong>
+              </span>
+              <button type="button" onclick="clearInputField('input-video-url'); updateYoutubeLivePreview();" class="text-rose-600 hover:underline font-medium">
+                נקה קישור סרטון
+              </button>
+            </div>
+
+            <!-- נגן YouTube מוטמע לייב בתוך המודאל! -->
+            <div id="youtube-embed-container" class="w-full aspect-video rounded-xl overflow-hidden bg-zinc-900 border border-slate-300 shadow-inner flex items-center justify-center relative">
+              <iframe
+                id="youtube-iframe"
+                src=""
+                class="w-full h-full border-0 hidden"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+              <div id="youtube-placeholder" class="text-center p-6 text-zinc-400 space-y-2">
+                <i data-lucide="film" class="w-10 h-10 mx-auto text-zinc-600"></i>
+                <p class="text-xs font-medium">הזן קישור YouTube תקין להפעלת נגן מקדים מוטמע</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ג. קישור TDS דף מידע טכני (עמודה V) -->
+        <!-- ============================================== -->
+        <div class="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3">
+          <label for="input-tds-url" class="font-bold text-sm text-slate-800 flex items-center gap-2">
+            <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+            קישור דף מידע טכני TDS (PDF / דף יצרן - עמודה V)
+          </label>
+          
+          <div class="flex items-center gap-2">
+            <input
+              type="url"
+              id="input-tds-url"
+              placeholder="https://sika.com/tds/sikatop-107.pdf"
+              class="flex-1 px-3.5 py-2.5 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono dir-ltr"
+            />
+            <button
+              type="button"
+              onclick="testOpenUrl('input-tds-url')"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs shrink-0"
+            >
+              <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              בדוק PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ד. תגית מבצע (עמודה G) + כושר כיסוי והערות (עמודות H + I) -->
+        <!-- ============================================== -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- תגית מבצע (עמודה G) -->
+          <div class="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-2">
+            <label for="input-sale-tag" class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+              <i data-lucide="tag" class="w-4 h-4 text-amber-500"></i>
+              תגית מבצע ושיווק (עמודה G)
+            </label>
+            <input
+              type="text"
+              id="input-sale-tag"
+              placeholder="לדוגמה: מבצע קבלנים ⚡, מחיר מיוחד"
+              class="w-full px-3.5 py-2 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 text-sm font-medium"
+            />
+            <!-- צ'יפים מהירים -->
+            <div class="flex flex-wrap gap-1.5 pt-1">
+              <button type="button" onclick="setSaleTagPreset('מבצע קבלנים ⚡')" class="text-[11px] bg-amber-100 hover:bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-medium transition-colors">
+                מבצע קבלנים ⚡
+              </button>
+              <button type="button" onclick="setSaleTagPreset('מוצר החודש 🏆')" class="text-[11px] bg-blue-100 hover:bg-blue-200 text-blue-900 px-2 py-0.5 rounded-md font-medium transition-colors">
+                מוצר החודש 🏆
+              </button>
+              <button type="button" onclick="setSaleTagPreset('בלעדי לסבן ⭐️')" class="text-[11px] bg-purple-100 hover:bg-purple-200 text-purple-900 px-2 py-0.5 rounded-md font-medium transition-colors">
+                בלעדי לסבן ⭐️
+              </button>
+              <button type="button" onclick="setSaleTagPreset('')" class="text-[11px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded-md font-medium transition-colors">
+                ללא תגית (נקה)
+              </button>
+            </div>
+          </div>
+
+          <!-- כושר כיסוי מ"ר והערה (עמודות H + I) -->
+          <div class="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3">
+            <div class="space-y-1">
+              <label for="input-coverage-m2" class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                <i data-lucide="ruler" class="w-4 h-4 text-slate-600"></i>
+                כושר כיסוי במ״ר ליחידה (עמודה H)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                id="input-coverage-m2"
+                placeholder="למשל: 12.5"
+                class="w-full px-3.5 py-2 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 text-sm font-semibold dir-ltr text-right"
+              />
+            </div>
+            
+            <div class="space-y-1">
+              <label for="input-coverage-note" class="font-semibold text-xs text-slate-700">
+                הערת כיסוי / יישום (עמודה I)
+              </label>
+              <input
+                type="text"
+                id="input-coverage-note"
+                placeholder="לדוגמה: לערכה של 25 ק״ג בשתי שכבות"
+                class="w-full px-3.5 py-2 bg-white text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 text-xs"
+              />
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================== -->
+        <!-- ה. פעיל בשילוט דיגיטלי (עמודה X) -->
+        <!-- ============================================== -->
+        <div class="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-4 flex items-center justify-between">
+          <div class="space-y-0.5">
+            <span class="font-bold text-sm text-amber-950 flex items-center gap-2">
+              <i data-lucide="tv" class="w-4 h-4 text-amber-600"></i>
+              פעיל בשילוט? (עמודה X - Active in Signage)
+            </span>
+            <p class="text-xs text-amber-800">
+              כאשר מסומן כ-TRUE, המוצר מוצג במסכי השילוט הדיגיטלי באולמות התצוגה ובמגרש.
+            </p>
+          </div>
+
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="input-active-signage" class="sr-only peer" checked />
+            <div class="w-14 h-7 bg-slate-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[3px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- כפתורי פעולה תחתונה: שמירה וביטול -->
+        <!-- ============================================== -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-200">
+          <button
+            type="button"
+            onclick="closeEditModal()"
+            class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-medium text-sm transition-colors"
+          >
+            ביטול
+          </button>
+
+          <button
+            type="submit"
+            id="btn-save-product"
+            class="px-6 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-sm flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <i data-lucide="save" id="btn-save-icon" class="w-4 h-4 text-amber-400"></i>
+            <span id="btn-save-text">שמור ועדכן גיליון Google Sheets</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 5. מודאל הגדרות API של Google Apps Script -->
+  <!-- ========================================================================= -->
+  <div id="api-modal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden p-6 space-y-4">
+      
+      <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-slate-100 rounded-xl text-slate-800">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-slate-900 text-base">הגדרות חיבור ל-Google Apps Script Web App</h3>
+            <p class="text-xs text-slate-500">הזן את ה-URL שהתקבל לאחר ביצוע Deploy ל-Code.gs</p>
+          </div>
+        </div>
+        <button onclick="closeApiConfigModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <label for="input-api-url" class="block font-semibold text-xs text-slate-700">כתובת Web App API (Exec URL):</label>
+        <input
+          type="url"
+          id="input-api-url"
+          placeholder="https://script.google.com/macros/s/.../exec"
+          class="w-full px-3.5 py-2.5 bg-slate-50 text-slate-900 border border-slate-300 rounded-xl focus:ring-2 focus:ring-slate-900 text-xs font-mono dir-ltr"
+        />
+        <p class="text-[11px] text-slate-500">
+          ודא שהפריסה (Deployment) מוגדרת כ-<strong>Execute as: Me</strong> ו-<strong>Who has access: Anyone</strong>.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <button
+          type="button"
+          onclick="testApiConnection()"
+          id="btn-test-api"
+          class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+        >
+          <i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i>
+          <span>בדוק חיבור עכשיו (Ping)</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            onclick="resetToDefaultApiUrl()"
+            class="px-3 py-2 text-xs text-slate-500 hover:text-slate-800 font-medium"
+          >
+            איפוס לברירת מחדל
+          </button>
+          <button
+            type="button"
+            onclick="saveApiConfig()"
+            class="px-5 py-2 bg-zinc-950 hover:bg-zinc-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+          >
+            שמור והפעל
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 6. הודעות משוב צפות (Toast Notifications) -->
+  <!-- ========================================================================= -->
+  <div id="toast-container" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 7. לוגיקת צד-לקוח (Vanilla JavaScript) מלאה ומודולרית -->
+  <!-- ========================================================================= -->
+  <script>
+    // --------------------------------------------------------------------------
+    // הגדרות ונתוני ברירת מחדל של קטלוג סבן (Mock Data & Official Catalog)
+    // --------------------------------------------------------------------------
+    const DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxxMuFP5evxDx8vxd3BfCQgx73H88KTOB87AzbiCAEx69UVJE1qmoCMyF9KM9qljvAX/exec";
+    const STORAGE_KEY_API_URL = "saban_signage_cms_api_url";
+
+    // מאגר מוצרי סבן התחלתי אותנטי (אם ה-API אינו זמין או להפעלה מיידית)
+    const SEED_PRODUCTS = [
+      {
+        sku: "10701",
+        name: "סיקה טופ 107 (ערכה 25 ק״ג)",
+        brand: "סיקה",
+        category: "מליטה ודבקים",
+        basePrice: 165,
+        unitLabel: "ערכה",
+        saleTag: "מבצע קבלנים ⚡",
+        coverageM2: 12.5,
+        coverageNote: "לשתי שכבות בעובי 2 מ״מ",
+        imageUrl: "https://www.ramo.co.il/_next/image?url=https%3A%2F%2Ffsta9bejnq4gsbv5.public.blob.vercel-storage.com%2Fproducts%2Fimage-1780415805788-b0d4nb.png&w=1920&q=80",
+        videoUrl: "https://www.youtube.com/watch?v=kYJ6gVbX6d8",
+        tdsUrl: "https://gilar.co.il/wp-content/uploads/2020/03/SikaTop-Seal-107.pdf",
+        activeInSignage: true
+      },
+      {
+        sku: "19255",
+        name: "סיקה סרם 255 סטארפלקס לבן (25 ק״ג)",
+        brand: "סיקה",
+        category: "מליטה ודבקים",
+        basePrice: 88,
+        unitLabel: "שק",
+        saleTag: "מוצר החודש 🏆",
+        coverageM2: 5.0,
+        coverageNote: "כ-5 מ״ר לשק עם מאלג׳ 8 מ״מ",
+        imageUrl: "https://gilar.co.il/wp-content/uploads/2020/03/GLR_MOCKUP_SITE_PICS_013.webp",
+        videoUrl: "https://www.youtube.com/watch?v=1F_4p53b5_s",
+        tdsUrl: "https://gilar.co.il/wp-content/uploads/2020/03/SikaCeram-255-StarFlex.pdf",
+        activeInSignage: true
+      },
+      {
+        sku: "15181",
+        name: "טיט לריצוף 181 כרמית מיסטר פיקס (25 ק״ג)",
+        brand: "כרמית",
+        category: "מליטה ודבקים",
+        basePrice: 28,
+        unitLabel: "שק",
+        saleTag: "",
+        coverageM2: 5.0,
+        coverageNote: "כ-5 מ״ר לשק בעובי 5 מ״מ",
+        imageUrl: "https://www.carmit-mrfix.com/wp-content/uploads/2023/12/%D7%98%D7%99%D7%98-%D7%9C%D7%A8%D7%99%D7%A6%D7%95%D7%A3-181-724x1024.png",
+        videoUrl: "https://www.youtube.com/watch?v=n5lYmJm8bN8",
+        tdsUrl: "https://www.carmit-mrfix.com/product/tit-181/",
+        activeInSignage: true
+      },
+      {
+        sku: "10002",
+        name: "מלט אפור 25 ק״ג נשר (CEM II 42.5)",
+        brand: "נשר",
+        category: "מליטה ודבקים",
+        basePrice: 24,
+        unitLabel: "שק",
+        saleTag: "הנחת משטח 📦",
+        coverageM2: 2.0,
+        coverageNote: "תלוי ביחס התערובת",
+        imageUrl: "https://cdn.prod.website-files.com/64dc5ee93ec6291b90e749a1/651448e928ffb08b62e4afe4_7.webp",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: true
+      },
+      {
+        sku: "15680",
+        name: "סיקפלקס FC11 תרמיל 300 מ״ל אפור",
+        brand: "סיקה",
+        category: "איטום ודבקים",
+        basePrice: 34,
+        unitLabel: "יחידה",
+        saleTag: "בלעדי לסבן ⭐️",
+        coverageM2: 3.0,
+        coverageNote: "כ-3 מטר אורך לפוגה 10x10 מ״מ",
+        imageUrl: "https://sika.scene7.com/is/image/sikacs/au-Sikaflex-11FC-Purform-02198888:1-1?fmt=webp-alpha",
+        videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        tdsUrl: "https://gilar.co.il/wp-content/uploads/2020/03/Sikaflex-11-FC.pdf",
+        activeInSignage: true
+      },
+      {
+        sku: "14075",
+        name: "טיח גבס MP75 קנאוף 25 ק״ג",
+        brand: "קנאוף",
+        category: "גבס ופרופילים",
+        basePrice: 42,
+        unitLabel: "שק",
+        saleTag: "",
+        coverageM2: 2.5,
+        coverageNote: "עובי 10 מ״מ (חובה בטונקונטקט)",
+        imageUrl: "https://media.knauf.com/a/5EmPWu3sHCqd9fMMW4iZ27?fit=wrap&fmt=webp&hei=400",
+        videoUrl: "",
+        tdsUrl: "https://www.knauf.co.il/products/mp75",
+        activeInSignage: true
+      },
+      {
+        sku: "15090",
+        name: "רוקבונד שפכטל אמריקאי 28 ק״ג",
+        brand: "ח. סבן",
+        category: "צבע ושפכטל",
+        basePrice: 75,
+        unitLabel: "דלי",
+        saleTag: "",
+        coverageM2: 25.0,
+        coverageNote: "למריחה בעובי 1 מ״מ",
+        imageUrl: "/assets/product-waterproof-pail.jpg",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: false
+      },
+      {
+        sku: "112260",
+        name: "לוח גבס ירוק עמיד לחות 260 טמבור/אורבונד",
+        brand: "טמבור",
+        category: "גבס ופרופילים",
+        basePrice: 49,
+        unitLabel: "לוח",
+        saleTag: "מבצע חם 🔥",
+        coverageM2: 3.12,
+        coverageNote: "1.20 מ׳ רוחב על 2.60 מ׳ אורך",
+        imageUrl: "https://b2b.tambour.co.il/sfsites/c/cms/delivery/media/MCQYV5PDLBJ5HYFCKWKDS74NZNNI",
+        videoUrl: "https://www.youtube.com/watch?v=0kLdF_5B8s8",
+        tdsUrl: "https://tambour.co.il/gypsum-green-board-tds",
+        activeInSignage: true
+      },
+      {
+        sku: "111260",
+        name: "לוח גבס לבן סטנדרטי 260 אורבונד",
+        brand: "אורבונד",
+        category: "גבס ופרופילים",
+        basePrice: 38,
+        unitLabel: "לוח",
+        saleTag: "",
+        coverageM2: 3.12,
+        coverageNote: "1.20 מ׳ רוחב על 2.60 מ׳ אורך",
+        imageUrl: "https://b2b.tambour.co.il/sfsites/c/cms/delivery/media/MCQYV5PDLBJ5HYFCKWKDS74NZNNI",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: true
+      },
+      {
+        sku: "11501",
+        name: "חול ים / טיט שק גדול (בלה / שק)",
+        brand: "ח. סבן",
+        category: "אגרגטים",
+        basePrice: 18,
+        unitLabel: "שק",
+        saleTag: "",
+        coverageM2: null,
+        coverageNote: "שק 25 ק״ג לחומרי מליטה",
+        imageUrl: "/assets/product-adhesive-bag.jpg",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: true
+      },
+      {
+        sku: "11511",
+        name: "סומסום לריצוף שק גדול (אגרגט מנופה)",
+        brand: "ח. סבן",
+        category: "אגרגטים",
+        basePrice: 18,
+        unitLabel: "שק",
+        saleTag: "",
+        coverageM2: null,
+        coverageNote: "תשתית יבשה ומאושרת מתחת לריצוף",
+        imageUrl: "/assets/product-adhesive-bag.jpg",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: false
+      },
+      {
+        sku: "76206",
+        name: "ברגי גבס 25 מ״מ שחורים חוד קודח (אלף יח׳)",
+        brand: "ח. סבן",
+        category: "פרזול וברגים",
+        basePrice: 32,
+        unitLabel: "קופסה",
+        saleTag: "",
+        coverageM2: 25.0,
+        coverageNote: "לכ-25 מ״ר קירות גבס",
+        imageUrl: "",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: false
+      },
+      {
+        sku: "10702",
+        name: "סיקה לטקס SBR משפר הידבקות ואיטום (דלי 5 ק״ג)",
+        brand: "סיקה",
+        category: "מליטה ודבקים",
+        basePrice: 95,
+        unitLabel: "דלי",
+        saleTag: "חובה לרולקות",
+        coverageM2: 15.0,
+        coverageNote: "בתוספת לטיט / מלט לשכבת קישור",
+        imageUrl: "/assets/product-latex-sbr.jpg",
+        videoUrl: "https://www.youtube.com/watch?v=SikaLatexDemo",
+        tdsUrl: "https://gilar.co.il/tds/sika-latex",
+        activeInSignage: true
+      },
+      {
+        sku: "20101",
+        name: "בלוק בטון 20 תקני תלת-תאי",
+        brand: "ח. סבן",
+        category: "בלוקים וברזל",
+        basePrice: 5.8,
+        unitLabel: "יחידה",
+        saleTag: "",
+        coverageM2: 12.5,
+        coverageNote: "12.5 בלוקים למ״ר קיר",
+        imageUrl: "",
+        videoUrl: "",
+        tdsUrl: "",
+        activeInSignage: false
+      }
+    ];
+
+    // --------------------------------------------------------------------------
+    // מצב האפליקציה (Application State)
+    // --------------------------------------------------------------------------
+    let appState = {
+      products: [],
+      filteredProducts: [],
+      searchQuery: "",
+      brandFilter: "ALL",
+      statusFilter: "ALL",
+      viewMode: "grid", // 'grid' | 'table'
+      editingProduct: null,
+      apiUrl: localStorage.getItem(STORAGE_KEY_API_URL) || DEFAULT_WEB_APP_URL,
+      isConnected: false,
+      isLoading: false
+    };
+
+    // --------------------------------------------------------------------------
+    // אתחול האפליקציה (Init)
+    // --------------------------------------------------------------------------
+    window.addEventListener("DOMContentLoaded", () => {
+      // טעינת רשימת מוצרים ראשונית
+      appState.products = JSON.parse(JSON.stringify(SEED_PRODUCTS));
+      applyFilters();
+      updateDashboardStats();
+      
+      // בדיקת חיבור לרשת וניסיון משיכה מה-API
+      checkApiHealth();
+      fetchCatalogFromSheets(false);
+
+      // אתחול אייקונים
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    });
+
+    // --------------------------------------------------------------------------
+    // משיכת נתונים מ-Google Apps Script (doGet)
+    // --------------------------------------------------------------------------
+    async function fetchCatalogFromSheets(showToast = true) {
+      if (!appState.apiUrl) return;
+
+      const refreshBtn = document.getElementById("btn-refresh");
+      const refreshIcon = document.getElementById("icon-refresh");
+      if (refreshIcon) refreshIcon.classList.add("animate-spin");
+
+      try {
+        const fetchUrl = `${appState.apiUrl}${appState.apiUrl.includes("?") ? "&" : "?"}action=products&_t=${Date.now()}`;
+        const response = await fetch(fetchUrl, { method: "GET", redirect: "follow" });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Array.isArray(data.products) && data.products.length > 0) {
+            appState.products = data.products;
+            applyFilters();
+            updateDashboardStats();
+            setConnectionStatus(true, `מחובר לגיליון (${data.products.length} מוצרים)`);
+            if (showToast) {
+              showToastNotification("success", `נטענו בהצלחה ${data.products.length} מוצרים מ-Google Sheets!`);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch remote products from Sheets, using local state:", err);
+        setConnectionStatus(false, "מצב עבודה מקומי (ללא רשת)");
+        if (showToast) {
+          showToastNotification("info", "עובד במצב מקומי עם קטלוג ברירת המחדל.");
+        }
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // בדיקת חיות ה-API (doGet?action=ping)
+    // --------------------------------------------------------------------------
+    async function checkApiHealth() {
+      try {
+        const pingUrl = `${appState.apiUrl}${appState.apiUrl.includes("?") ? "&" : "?"}action=ping&_t=${Date.now()}`;
+        const res = await fetch(pingUrl, { method: "GET", redirect: "follow" });
+        if (res.ok) {
+          setConnectionStatus(true, "מחובר ל-API");
+        } else {
+          setConnectionStatus(false, "API לא זמין");
+        }
+      } catch {
+        setConnectionStatus(false, "מצב עבודה מקומי");
+      }
+    }
+
+    function setConnectionStatus(connected, text) {
+      appState.isConnected = connected;
+      const dot = document.getElementById("connection-status-dot");
+      const label = document.getElementById("connection-status-text");
+      if (dot && label) {
+        if (connected) {
+          dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 custom-pulse";
+        } else {
+          dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+        }
+        label.textContent = text;
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // מנוע סינון וחיפוש (Client-Side State Engine)
+    // --------------------------------------------------------------------------
+    function applyFilters() {
+      const q = (appState.searchQuery || "").trim().toLowerCase();
+      const b = appState.brandFilter;
+      const s = appState.statusFilter;
+
+      appState.filteredProducts = appState.products.filter(p => {
+        // 1. חיפוש טקסטואלי במק״ט, שם מוצר או מותג
+        if (q) {
+          const matchSku = (p.sku || "").toLowerCase().includes(q);
+          const matchName = (p.name || "").toLowerCase().includes(q);
+          const matchBrand = (p.brand || "").toLowerCase().includes(q);
+          const matchTag = (p.saleTag || "").toLowerCase().includes(q);
+          if (!matchSku && !matchName && !matchBrand && !matchTag) return false;
+        }
+
+        // 2. סינון מותג
+        if (b !== "ALL") {
+          if (!p.brand || !p.brand.includes(b)) return false;
+        }
+
+        // 3. סינון לפי סטטוס מוכנות
+        const hasImg = Boolean(p.imageUrl && p.imageUrl.trim());
+        const hasVid = Boolean(p.videoUrl && p.videoUrl.trim());
+        const hasTds = Boolean(p.tdsUrl && p.tdsUrl.trim());
+
+        if (s === "MISSING_IMAGE" && hasImg) return false;
+        if (s === "MISSING_VIDEO" && hasVid) return false;
+        if (s === "MISSING_TDS" && hasTds) return false;
+        if (s === "READY_FOR_SIGNAGE" && (!hasImg || !hasVid || !hasTds)) return false;
+        if (s === "ACTIVE_ONLY" && !p.activeInSignage) return false;
+
+        return true;
+      });
+
+      renderProductsView();
+      updateFilterCounters();
+    }
+
+    function handleSearchChange() {
+      const input = document.getElementById("search-input");
+      const clearBtn = document.getElementById("btn-clear-search");
+      appState.searchQuery = input.value;
+      if (clearBtn) {
+        clearBtn.classList.toggle("hidden", !input.value);
+      }
+      applyFilters();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById("search-input");
+      input.value = "";
+      handleSearchChange();
+      input.focus();
+    }
+
+    function handleBrandChange() {
+      const select = document.getElementById("brand-select");
+      appState.brandFilter = select.value;
+      applyFilters();
+    }
+
+    function setStatusFilter(filter) {
+      appState.statusFilter = filter;
+      
+      // עדכון ויזואלי של טאבים
+      const allTabs = document.querySelectorAll(".filter-tab");
+      allTabs.forEach(t => {
+        t.className = "filter-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-1";
+      });
+
+      const activeBtn = document.getElementById(`filter-tab-${filter}`);
+      if (activeBtn) {
+        activeBtn.className = "filter-tab active-tab text-xs px-3 py-1.5 rounded-lg font-medium transition-all bg-zinc-900 text-white flex items-center gap-1 shadow-xs";
+      }
+
+      applyFilters();
+    }
+
+    function resetFilters() {
+      const searchInput = document.getElementById("search-input");
+      const brandSelect = document.getElementById("brand-select");
+      if (searchInput) searchInput.value = "";
+      if (brandSelect) brandSelect.value = "ALL";
+      appState.searchQuery = "";
+      appState.brandFilter = "ALL";
+      setStatusFilter("ALL");
+    }
+
+    function setViewMode(mode) {
+      appState.viewMode = mode;
+      const gridBtn = document.getElementById("view-grid-btn");
+      const tableBtn = document.getElementById("view-table-btn");
+      const gridContainer = document.getElementById("products-grid");
+      const tableContainer = document.getElementById("products-table-container");
+
+      if (mode === "grid") {
+        gridBtn.className = "p-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-medium text-xs flex items-center gap-1 transition-all";
+        tableBtn.className = "p-1.5 rounded-lg text-slate-500 hover:text-slate-900 font-medium text-xs flex items-center gap-1 transition-all";
+        gridContainer.classList.remove("hidden");
+        tableContainer.classList.add("hidden");
+      } else {
+        tableBtn.className = "p-1.5 rounded-lg bg-white shadow-xs text-slate-900 font-medium text-xs flex items-center gap-1 transition-all";
+        gridBtn.className = "p-1.5 rounded-lg text-slate-500 hover:text-slate-900 font-medium text-xs flex items-center gap-1 transition-all";
+        gridContainer.classList.add("hidden");
+        tableContainer.classList.remove("hidden");
+      }
+      renderProductsView();
+    }
+
+    // --------------------------------------------------------------------------
+    // רינדור מוצרים (Render View: Cards or Table)
+    // --------------------------------------------------------------------------
+    function renderProductsView() {
+      const gridContainer = document.getElementById("products-grid");
+      const tableBody = document.getElementById("products-table-body");
+      const emptyState = document.getElementById("empty-state");
+
+      const items = appState.filteredProducts;
+
+      if (!items || items.length === 0) {
+        if (gridContainer) gridContainer.innerHTML = "";
+        if (tableBody) tableBody.innerHTML = "";
+        if (emptyState) emptyState.classList.remove("hidden");
+        return;
+      }
+
+      if (emptyState) emptyState.classList.add("hidden");
+
+      if (appState.viewMode === "grid") {
+        renderGridCards(items);
+      } else {
+        renderTableView(items);
+      }
+
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function renderGridCards(items) {
+      const container = document.getElementById("products-grid");
+      if (!container) return;
+
+      container.innerHTML = items.map(p => {
+        const hasImg = Boolean(p.imageUrl && p.imageUrl.trim());
+        const hasVid = Boolean(p.videoUrl && p.videoUrl.trim());
+        const hasTds = Boolean(p.tdsUrl && p.tdsUrl.trim());
+        const isReady = hasImg && hasVid && hasTds;
+
+        return `
+          <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group hover:border-slate-300">
+            
+            <div class="space-y-3">
+              
+              <!-- תמונת תצוגה מקדימה -->
+              <div class="relative w-full aspect-4/3 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
+                ${hasImg 
+                  ? `<img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" class="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300" onerror="this.src='/public/icon.svg'; this.className='w-12 h-12 opacity-30';" />`
+                  : `<div class="flex flex-col items-center justify-center text-slate-300 gap-1"><i data-lucide="image" class="w-8 h-8"></i><span class="text-[11px] text-slate-400 font-medium">טרם הוגדרה תמונה</span></div>`
+                }
+
+                <!-- תגית מותג -->
+                <div class="absolute top-2 right-2">
+                  <span class="bg-zinc-950/80 backdrop-blur-xs text-white text-[11px] font-semibold px-2.5 py-0.5 rounded-lg shadow-xs">
+                    ${escapeHtml(p.brand || 'סבן')}
+                  </span>
+                </div>
+
+                <!-- תגית מבצע אם יש -->
+                ${p.saleTag ? `
+                  <div class="absolute bottom-2 right-2">
+                    <span class="bg-amber-400 text-zinc-950 text-[11px] font-bold px-2 py-0.5 rounded-md shadow-xs">
+                      ${escapeHtml(p.saleTag)}
+                    </span>
+                  </div>
+                ` : ''}
+
+                <!-- מתג פעיל בשילוט מהיר -->
+                <div class="absolute top-2 left-2">
+                  <button 
+                    onclick="toggleSignageActive('${escapeHtml(p.sku)}', event)"
+                    class="p-1.5 rounded-lg backdrop-blur-xs transition-colors ${p.activeInSignage ? 'bg-emerald-600 text-white' : 'bg-zinc-800/80 text-zinc-400'}"
+                    title="${p.activeInSignage ? 'פעיל בשילוט (לחץ לכיבוי)' : 'כבוי בשילוט (לחץ להפעלה)'}"
+                  >
+                    <i data-lucide="tv" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- כותרת ומק"ט -->
+              <div>
+                <div class="flex items-center justify-between text-xs text-slate-500 mb-1">
+                  <span class="font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold flex items-center gap-1">
+                    <i data-lucide="lock" class="w-3 h-3 text-slate-400"></i>
+                    #${escapeHtml(p.sku)}
+                  </span>
+                  <span class="font-medium text-slate-600">${p.basePrice ? p.basePrice + ' ₪' : ''}</span>
+                </div>
+                <h3 class="font-display font-bold text-slate-900 text-sm leading-snug line-clamp-2" title="${escapeHtml(p.name)}">
+                  ${escapeHtml(p.name)}
+                </h3>
+              </div>
+
+              <!-- באדג'ים של מדיה -->
+              <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                <!-- תמונה -->
+                <span class="text-[10px] px-2 py-0.5 rounded-md font-medium flex items-center gap-1 ${hasImg ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-400 border border-slate-200'}">
+                  <i data-lucide="image" class="w-3 h-3"></i>
+                  ${hasImg ? 'תמונה' : 'חסר'}
+                </span>
+                
+                <!-- סרטון -->
+                <span class="text-[10px] px-2 py-0.5 rounded-md font-medium flex items-center gap-1 ${hasVid ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-slate-100 text-slate-400 border border-slate-200'}">
+                  <i data-lucide="youtube" class="w-3 h-3"></i>
+                  ${hasVid ? 'וידאו' : 'חסר'}
+                </span>
+
+                <!-- TDS -->
+                <span class="text-[10px] px-2 py-0.5 rounded-md font-medium flex items-center gap-1 ${hasTds ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-400 border border-slate-200'}">
+                  <i data-lucide="file-text" class="w-3 h-3"></i>
+                  ${hasTds ? 'TDS' : 'חסר'}
+                </span>
+
+                ${p.coverageM2 ? `
+                  <span class="text-[10px] px-2 py-0.5 rounded-md font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                    ${p.coverageM2} מ״ר
+                  </span>
+                ` : ''}
+              </div>
+
+            </div>
+
+            <!-- כפתור עריכה תחתון -->
+            <div class="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-[11px] text-slate-400 flex items-center gap-1">
+                <i data-lucide="info" class="w-3 h-3"></i>
+                ${isReady ? '<span class="text-emerald-600 font-semibold">מוכן 100% ✨</span>' : 'נדרש השלמת מדיה'}
+              </span>
+
+              <button
+                onclick="openEditModal('${escapeHtml(p.sku)}')"
+                class="bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+              >
+                <i data-lucide="edit-3" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>ערוך מדיה</span>
+              </button>
+            </div>
+
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderTableView(items) {
+      const tbody = document.getElementById("products-table-body");
+      if (!tbody) return;
+
+      tbody.innerHTML = items.map(p => {
+        const hasImg = Boolean(p.imageUrl && p.imageUrl.trim());
+        const hasVid = Boolean(p.videoUrl && p.videoUrl.trim());
+        const hasTds = Boolean(p.tdsUrl && p.tdsUrl.trim());
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <!-- תמונה -->
+            <td class="py-2 px-4">
+              <div class="w-10 h-10 rounded-lg border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center">
+                ${hasImg 
+                  ? `<img src="${escapeHtml(p.imageUrl)}" alt="${escapeHtml(p.name)}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<i data-lucide=image class=\'w-4 h-4 text-slate-300\'></i>'"/>`
+                  : `<i data-lucide="image" class="w-4 h-4 text-slate-300"></i>`
+                }
+              </div>
+            </td>
+
+            <!-- מק"ט -->
+            <td class="py-2 px-4 font-mono font-bold text-xs text-slate-800 whitespace-nowrap">
+              #${escapeHtml(p.sku)}
+            </td>
+
+            <!-- שם המוצר -->
+            <td class="py-2 px-4 font-semibold text-slate-900 max-w-xs truncate" title="${escapeHtml(p.name)}">
+              ${escapeHtml(p.name)}
+            </td>
+
+            <!-- מותג -->
+            <td class="py-2 px-4 text-xs text-slate-600 whitespace-nowrap">
+              ${escapeHtml(p.brand || 'סבן')}
+            </td>
+
+            <!-- תגית מבצע -->
+            <td class="py-2 px-4 text-xs whitespace-nowrap">
+              ${p.saleTag ? `<span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-medium">${escapeHtml(p.saleTag)}</span>` : '<span class="text-slate-300">-</span>'}
+            </td>
+
+            <!-- כושר כיסוי -->
+            <td class="py-2 px-4 text-xs text-slate-700 whitespace-nowrap">
+              ${p.coverageM2 ? `${p.coverageM2} מ״ר` : '<span class="text-slate-300">-</span>'}
+            </td>
+
+            <!-- מדיה אינדיקטורים -->
+            <td class="py-2 px-4 text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1.5">
+                <i data-lucide="image" class="w-4 h-4 ${hasImg ? 'text-emerald-600' : 'text-slate-200'}" title="${hasImg ? 'יש תמונה' : 'חסר תמונה'}"></i>
+                <i data-lucide="youtube" class="w-4 h-4 ${hasVid ? 'text-red-600' : 'text-slate-200'}" title="${hasVid ? 'יש סרטון' : 'חסר סרטון'}"></i>
+                <i data-lucide="file-text" class="w-4 h-4 ${hasTds ? 'text-blue-600' : 'text-slate-200'}" title="${hasTds ? 'יש TDS' : 'חסר TDS'}"></i>
+              </div>
+            </td>
+
+            <!-- פעיל בשילוט? -->
+            <td class="py-2 px-4 text-center whitespace-nowrap">
+              <button 
+                onclick="toggleSignageActive('${escapeHtml(p.sku)}', event)"
+                class="px-2.5 py-1 rounded-md text-xs font-semibold ${p.activeInSignage ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}"
+              >
+                ${p.activeInSignage ? 'פעיל' : 'כבוי'}
+              </button>
+            </td>
+
+            <!-- כפתור עריכה -->
+            <td class="py-2 px-4 text-center whitespace-nowrap">
+              <button
+                onclick="openEditModal('${escapeHtml(p.sku)}')"
+                class="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 mx-auto transition-colors"
+              >
+                <i data-lucide="edit" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>ערוך</span>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // --------------------------------------------------------------------------
+    // מונה מדדים וסטטיסטיקות (Dashboard Stats)
+    // --------------------------------------------------------------------------
+    function updateDashboardStats() {
+      const all = appState.products;
+      const total = all.length;
+      const active = all.filter(p => p.activeInSignage).length;
+
+      const hasImages = all.filter(p => p.imageUrl && p.imageUrl.trim()).length;
+      const hasVideos = all.filter(p => p.videoUrl && p.videoUrl.trim()).length;
+      const hasTds = all.filter(p => p.tdsUrl && p.tdsUrl.trim()).length;
+      const readyAll = all.filter(p => p.imageUrl && p.videoUrl && p.tdsUrl).length;
+
+      // עדכון ב-Header
+      document.getElementById("header-total-count").textContent = total;
+      document.getElementById("header-active-count").textContent = active;
+
+      // עדכון בבאנר מוכנות
+      document.getElementById("stat-images-count").textContent = `${hasImages}/${total}`;
+      document.getElementById("stat-videos-count").textContent = `${hasVideos}/${total}`;
+      document.getElementById("stat-tds-count").textContent = `${hasTds}/${total}`;
+
+      const pct = total > 0 ? Math.round((readyAll / total) * 100) : 0;
+      document.getElementById("readiness-percent").textContent = `${pct}% מוכן מלא`;
+
+      // פסי התקדמות
+      const imgPct = total > 0 ? Math.round((hasImages / total) * 33.3) : 0;
+      const vidPct = total > 0 ? Math.round((hasVideos / total) * 33.3) : 0;
+      const tdsPct = total > 0 ? Math.round((hasTds / total) * 33.3) : 0;
+
+      document.getElementById("progress-bar-images").style.width = `${imgPct}%`;
+      document.getElementById("progress-bar-videos").style.width = `${vidPct}%`;
+      document.getElementById("progress-bar-tds").style.width = `${tdsPct}%`;
+    }
+
+    function updateFilterCounters() {
+      const all = appState.products;
+      document.getElementById("count-filter-all").textContent = all.length;
+      document.getElementById("count-filter-no-image").textContent = all.filter(p => !p.imageUrl || !p.imageUrl.trim()).length;
+      document.getElementById("count-filter-no-video").textContent = all.filter(p => !p.videoUrl || !p.videoUrl.trim()).length;
+      document.getElementById("count-filter-no-tds").textContent = all.filter(p => !p.tdsUrl || !p.tdsUrl.trim()).length;
+      document.getElementById("count-filter-ready").textContent = all.filter(p => p.imageUrl && p.videoUrl && p.tdsUrl).length;
+      document.getElementById("count-filter-active").textContent = all.filter(p => p.activeInSignage).length;
+    }
+
+    // --------------------------------------------------------------------------
+    // מודאל עריכה (Edit Modal Logic)
+    // --------------------------------------------------------------------------
+    function openEditModal(sku) {
+      const product = appState.products.find(p => String(p.sku).trim() === String(sku).trim());
+      if (!product) return;
+
+      appState.editingProduct = product;
+
+      // שדות נעולים (Read-only ERP)
+      document.getElementById("modal-sku").textContent = product.sku;
+      document.getElementById("modal-name").textContent = product.name;
+      document.getElementById("modal-brand").textContent = product.brand || "סבן";
+      document.getElementById("modal-category").textContent = product.category || "";
+
+      // הזנת שדות עריכה
+      document.getElementById("input-image-url").value = product.imageUrl || "";
+      document.getElementById("input-video-url").value = product.videoUrl || "";
+      document.getElementById("input-tds-url").value = product.tdsUrl || "";
+      document.getElementById("input-sale-tag").value = product.saleTag || "";
+      document.getElementById("input-coverage-m2").value = product.coverageM2 !== null && product.coverageM2 !== undefined ? product.coverageM2 : "";
+      document.getElementById("input-coverage-note").value = product.coverageNote || "";
+      document.getElementById("input-active-signage").checked = Boolean(product.activeInSignage);
+
+      // עדכון מקדים מיידי (Live Previews)
+      updateImageLivePreview();
+      updateYoutubeLivePreview();
+
+      // פתיחת מודאל
+      const modal = document.getElementById("edit-modal");
+      modal.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function closeEditModal() {
+      const modal = document.getElementById("edit-modal");
+      modal.classList.add("hidden");
+      document.body.style.overflow = "";
+      appState.editingProduct = null;
+
+      // עצירת נגן יוטיוב
+      const iframe = document.getElementById("youtube-iframe");
+      if (iframe) iframe.src = "";
+    }
+
+    // פיענוח מזהה YouTube ועדכון נגן מוטמע חי
+    function updateYoutubeLivePreview() {
+      const urlInput = document.getElementById("input-video-url").value.trim();
+      const iframe = document.getElementById("youtube-iframe");
+      const placeholder = document.getElementById("youtube-placeholder");
+      const extractedLabel = document.getElementById("youtube-extracted-id");
+
+      const videoId = extractYouTubeId(urlInput);
+
+      if (videoId) {
+        extractedLabel.textContent = videoId;
+        extractedLabel.className = "font-mono text-emerald-600 font-bold";
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+        iframe.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+      } else {
+        extractedLabel.textContent = urlInput ? "לא זוהה מזהה תקין" : "טרם הוגדר";
+        extractedLabel.className = "font-mono text-slate-500";
+        iframe.src = "";
+        iframe.classList.add("hidden");
+        placeholder.classList.remove("hidden");
+      }
+    }
+
+    function extractYouTubeId(url) {
+      if (!url) return null;
+      // אם הוזן ישירות מזהה 11 תווים
+      if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+
+      // RegEx מקיף לתמיכה ב-youtu.be, watch?v=, shorts/, embed/
+      const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i);
+      return match ? match[1] : null;
+    }
+
+    // עדכון Live Preview לתמונה
+    function updateImageLivePreview() {
+      const inputVal = document.getElementById("input-image-url").value.trim();
+      const img = document.getElementById("image-live-preview");
+      const fallback = document.getElementById("image-preview-fallback");
+
+      if (inputVal) {
+        img.src = inputVal;
+      } else {
+        img.src = "";
+        img.classList.add("hidden");
+        fallback.classList.remove("hidden");
+      }
+    }
+
+    function setSaleTagPreset(tag) {
+      document.getElementById("input-sale-tag").value = tag;
+    }
+
+    function clearInputField(id) {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    }
+
+    function testOpenUrl(id) {
+      const val = document.getElementById(id).value.trim();
+      if (!val) {
+        showToastNotification("error", "לא הוזן קישור לבדיקה.");
+        return;
+      }
+      window.open(val, "_blank");
+    }
+
+    // --------------------------------------------------------------------------
+    // שליחת הטופס ושמירה לגיליון (doPost)
+    // --------------------------------------------------------------------------
+    async function handleFormSubmit(event) {
+      event.preventDefault();
+      if (!appState.editingProduct) return;
+
+      const p = appState.editingProduct;
+      const sku = p.sku;
+
+      const updatedPayload = {
+        action: "update_product",
+        sku: sku,
+        imageUrl: document.getElementById("input-image-url").value.trim(),
+        videoUrl: document.getElementById("input-video-url").value.trim(),
+        tdsUrl: document.getElementById("input-tds-url").value.trim(),
+        saleTag: document.getElementById("input-sale-tag").value.trim(),
+        coverageM2: document.getElementById("input-coverage-m2").value !== "" ? Number(document.getElementById("input-coverage-m2").value) : null,
+        coverageNote: document.getElementById("input-coverage-note").value.trim(),
+        activeInSignage: document.getElementById("input-active-signage").checked
+      };
+
+      // מצב טעינה בכפתור
+      const saveBtn = document.getElementById("btn-save-product");
+      const saveIcon = document.getElementById("btn-save-icon");
+      const saveText = document.getElementById("btn-save-text");
+      
+      saveBtn.disabled = true;
+      saveIcon.className = "w-4 h-4 animate-spin";
+      saveText.textContent = "שומר ומסנכרן לגיליון...";
+
+      try {
+        // 1. עדכון State מקומי מיידי
+        Object.assign(p, updatedPayload);
+        applyFilters();
+        updateDashboardStats();
+
+        // 2. שידור ל-Google Apps Script Web App
+        let remoteSynced = false;
+        if (appState.apiUrl) {
+          try {
+            const res = await fetch(appState.apiUrl, {
+              method: "POST",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify(updatedPayload),
+              redirect: "follow"
+            });
+
+            if (res.ok) {
+              const resData = await res.json().catch(() => ({ status: "success" }));
+              remoteSynced = true;
+              console.log("Updated Google Sheets successfully:", resData);
+            }
+          } catch (postErr) {
+            console.warn("Could not POST to Google Apps Script directly:", postErr);
+          }
+        }
+
+        // הודעת הצלחה
+        if (remoteSynced) {
+          showToastNotification("success", `מוצר ${sku} עודכן בהצלחה בגיליון '📦 קטלוג_מוצרים'! 🎉`);
+        } else {
+          showToastNotification("info", `מוצר ${sku} עודכן במערכת המקומית (יסונכרן לגיליון ברגע התחברות).`);
+        }
+
+        closeEditModal();
+
+      } catch (err) {
+        console.error("Save error:", err);
+        showToastNotification("error", "אירעה שגיאה בשמירת המוצר: " + err.message);
+      } finally {
+        saveBtn.disabled = false;
+        saveIcon.className = "w-4 h-4 text-amber-400";
+        saveText.textContent = "שמור ועדכן גיליון Google Sheets";
+      }
+    }
+
+    // היפוך מהיר של פעיל בשילוט ישירות מהכרטיסייה
+    async function toggleSignageActive(sku, event) {
+      if (event) event.stopPropagation();
+
+      const product = appState.products.find(p => p.sku === sku);
+      if (!product) return;
+
+      product.activeInSignage = !product.activeInSignage;
+      applyFilters();
+      updateDashboardStats();
+
+      showToastNotification("info", `מוצר #${sku} ${product.activeInSignage ? 'הופעל' : 'הושבת'} בשילוט הדיגיטלי.`);
+
+      // שליחת עדכון לשרת
+      if (appState.apiUrl) {
+        fetch(appState.apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "update_product",
+            sku: sku,
+            activeInSignage: product.activeInSignage
+          }),
+          redirect: "follow"
+        }).catch(err => console.warn("Failed background toggle sync:", err));
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // הגדרות API מודאל
+    // --------------------------------------------------------------------------
+    function openApiConfigModal() {
+      document.getElementById("input-api-url").value = appState.apiUrl;
+      document.getElementById("api-modal").classList.remove("hidden");
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    function closeApiConfigModal() {
+      document.getElementById("api-modal").classList.add("hidden");
+    }
+
+    function saveApiConfig() {
+      const url = document.getElementById("input-api-url").value.trim();
+      if (!url) {
+        showToastNotification("error", "אנא הזן כתובת URL תקינה");
+        return;
+      }
+      appState.apiUrl = url;
+      localStorage.setItem(STORAGE_KEY_API_URL, url);
+      closeApiConfigModal();
+      showToastNotification("success", "כתובת ה-API עודכנה בהצלחה!");
+      fetchCatalogFromSheets(true);
+    }
+
+    function resetToDefaultApiUrl() {
+      document.getElementById("input-api-url").value = DEFAULT_WEB_APP_URL;
+    }
+
+    async function testApiConnection() {
+      const btn = document.getElementById("btn-test-api");
+      const url = document.getElementById("input-api-url").value.trim();
+      if (!url) {
+        showToastNotification("error", "הזן תחילה כתובת URL.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> <span>בודק...</span>`;
+      if (window.lucide) window.lucide.createIcons();
+
+      try {
+        const start = performance.now();
+        const testUrl = `${url}${url.includes("?") ? "&" : "?"}action=ping&_t=${Date.now()}`;
+        const res = await fetch(testUrl, { method: "GET", redirect: "follow" });
+        const latency = Math.round(performance.now() - start);
+
+        if (res.ok) {
+          showToastNotification("success", `חיבור תקין ל-Google Apps Script! (${latency}ms)`);
+        } else {
+          showToastNotification("error", `השרת החזיר שגיאה (קוד ${res.status})`);
+        }
+      } catch (e) {
+        showToastNotification("error", "בדיקת החיבור נכשלה: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i> <span>בדוק חיבור עכשיו (Ping)</span>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // מערכת התראות צפות (Toast Notifications)
+    // --------------------------------------------------------------------------
+    function showToastNotification(type, message) {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+
+      const toast = document.createElement("div");
+      toast.className = `p-4 rounded-2xl shadow-xl border text-sm font-medium flex items-center gap-3 transition-all duration-300 pointer-events-auto transform translate-y-4 opacity-0 ${
+        type === "success" 
+          ? "bg-zinc-950 text-white border-zinc-800" 
+          : type === "error"
+            ? "bg-rose-900 text-white border-rose-800"
+            : "bg-white text-slate-900 border-slate-200"
+      }`;
+
+      let iconHtml = '<i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i>';
+      if (type === "error") iconHtml = '<i data-lucide="alert-circle" class="w-5 h-5 text-rose-300"></i>';
+      if (type === "info") iconHtml = '<i data-lucide="info" class="w-5 h-5 text-blue-500"></i>';
+
+      toast.innerHTML = `
+        <div class="shrink-0">${iconHtml}</div>
+        <div class="flex-1">${escapeHtml(message)}</div>
+      `;
+
+      container.appendChild(toast);
+      if (window.lucide) window.lucide.createIcons();
+
+      // אנימציית כניסה
+      setTimeout(() => {
+        toast.classList.remove("translate-y-4", "opacity-0");
+      }, 10);
+
+      // הסרה אוטומטית
+      setTimeout(() => {
+        toast.classList.add("translate-y-4", "opacity-0");
+        setTimeout(() => toast.remove(), 300);
+      }, 4500);
+    }
+
+    // עזר למניעת XSS
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // סגירת מודאלים במקש Escape
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeEditModal();
+        closeApiConfigModal();
+      }
+    });
+  </script>
+</body>
+</html>
