@@ -16,6 +16,7 @@ import {
   Maximize2,
   Minimize2,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -33,12 +34,38 @@ import {
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { ChatColorCard, ColorPaletteModal } from "@/components/color";
 import { Button } from "@/components/ui/button";
+import { COLOR_DATABASE, getColorByCode } from "@/lib/colorsData";
 import { dispatchToCounter, whatsappLink } from "@/lib/counter-dispatch";
 import { dispatchDualPersistence } from "@/lib/dual-storage";
 import { playLocationChime } from "@/lib/location-chime";
 import { effectivePrice, type Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
+import type { ColorItem } from "@/types/colors";
+
+function extractColorFromText(text: string): ColorItem | null {
+  if (!text) return null;
+  // Match IS XXXX (e.g. IS 0234, IS 0001, etc.)
+  const isMatch = text.match(/IS\s*0?\d{3,4}/i);
+  if (isMatch) {
+    const c = getColorByCode(isMatch[0]);
+    if (c) return c;
+  }
+  // Match 4 digits + letter (e.g. 0021P, 0524T, 1542D)
+  const codeMatch = text.match(/\b\d{4}[PTDptd]\b/);
+  if (codeMatch) {
+    const c = getColorByCode(codeMatch[0]);
+    if (c) return c;
+  }
+  // Match by known color names in the database
+  for (const c of COLOR_DATABASE) {
+    if (text.includes(c.name) || text.includes(c.code)) {
+      return c;
+    }
+  }
+  return null;
+}
 
 type Thread = {
   id: string;
@@ -461,6 +488,8 @@ function NoaPane({
 }) {
   const product = rawProduct ?? FALLBACK_PRODUCT;
   const [input, setInput] = useState("");
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [selectedColor, setSelectedColor] = useState<ColorItem | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const transport = useMemo(
@@ -719,7 +748,13 @@ ${pOrder.isWeightMismatch ? "⚠️ יש לשים לב: משקל המטען עו
                       key={action.id}
                       type="button"
                       disabled={busy}
-                      onClick={() => void submit(action.prompt)}
+                      onClick={() => {
+                        if (action.id === "paint") {
+                          setIsPaletteOpen(true);
+                        } else {
+                          void submit(action.prompt);
+                        }
+                      }}
                       className="group relative flex flex-col items-start rounded-xl border-2 border-border/80 bg-card p-2.5 text-right transition-all hover:border-amber-500 hover:bg-amber-50/20 active:scale-[0.98] shadow-xs"
                     >
                       {action.badge && (
@@ -749,40 +784,60 @@ ${pOrder.isWeightMismatch ? "⚠️ יש לשים לב: משקל המטען עו
             if (!text) return null;
 
             const isUser = message.role === "user";
+            const detectedColor = extractColorFromText(rawText);
 
             return (
               <div
                 key={message.id}
-                className={cn("flex w-full my-1.5", isUser ? "justify-start" : "justify-end")}
+                className={cn("flex flex-col w-full my-1.5", isUser ? "items-start" : "items-end")}
               >
-                {isUser ? (
-                  // בועת לקוח - עיצוב צהוב סבן מובטח ללא תלות ברקע כהה
-                  <div
-                    style={{
-                      backgroundColor: "#f59e0b",
-                      color: "#020617",
-                    }}
-                    className="max-w-[85%] rounded-2xl rounded-tr-xs px-4 py-2.5 shadow-md border-2 border-amber-600/40 text-slate-950 font-bold text-sm leading-relaxed"
-                  >
-                    <p
-                      className="whitespace-pre-line m-0 font-bold select-text"
-                      style={{ color: "#020617" }}
+                <div className={cn("flex w-full", isUser ? "justify-start" : "justify-end")}>
+                  {isUser ? (
+                    // בועת לקוח - עיצוב צהוב סבן מובטח ללא תלות ברקע כהה
+                    <div
+                      style={{
+                        backgroundColor: "#f59e0b",
+                        color: "#020617",
+                      }}
+                      className="max-w-[85%] rounded-2xl rounded-tr-xs px-4 py-2.5 shadow-md border-2 border-amber-600/40 text-slate-950 font-bold text-sm leading-relaxed"
                     >
-                      {text}
-                    </p>
-                  </div>
-                ) : (
-                  // בועת נועה - עיצוב דלפק לבן ונקי עם פונט חד, קריא וניגודיות מלאה
-                  <div
-                    style={{
-                      backgroundColor: "#ffffff",
-                      color: "#0f172a",
-                    }}
-                    className="max-w-[92%] rounded-2xl rounded-tl-xs px-4 py-3 shadow-sm border border-slate-200 text-slate-900 text-sm leading-relaxed"
-                  >
-                    <MessageResponse className="[&_p]:leading-relaxed [&_p]:font-medium [&_p]:text-slate-900 [&_strong]:font-black [&_strong]:text-slate-950 [&_li]:font-medium [&_li]:text-slate-900 [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-200 [&_img]:shadow-md [&_img]:my-2.5 [&_img]:max-h-56 [&_img]:w-auto [&_img]:object-contain [&_img]:bg-white [&_img]:p-1.5">
-                      {text}
-                    </MessageResponse>
+                      <p
+                        className="whitespace-pre-line m-0 font-bold select-text"
+                        style={{ color: "#020617" }}
+                      >
+                        {text}
+                      </p>
+                    </div>
+                  ) : (
+                    // בועת נועה - עיצוב דלפק לבן ונקי עם פונט חד, קריא וניגודיות מלאה
+                    <div
+                      style={{
+                        backgroundColor: "#ffffff",
+                        color: "#0f172a",
+                      }}
+                      className="max-w-[92%] rounded-2xl rounded-tl-xs px-4 py-3 shadow-sm border border-slate-200 text-slate-900 text-sm leading-relaxed"
+                    >
+                      <MessageResponse className="[&_p]:leading-relaxed [&_p]:font-medium [&_p]:text-slate-900 [&_strong]:font-black [&_strong]:text-slate-950 [&_li]:font-medium [&_li]:text-slate-900 [&_img]:rounded-xl [&_img]:border [&_img]:border-slate-200 [&_img]:shadow-md [&_img]:my-2.5 [&_img]:max-h-56 [&_img]:w-auto [&_img]:object-contain [&_img]:bg-white [&_img]:p-1.5">
+                        {text}
+                      </MessageResponse>
+                    </div>
+                  )}
+                </div>
+
+                {/* Inline Color Card if color code detected in this message */}
+                {detectedColor && (
+                  <div className="w-full flex justify-center my-2">
+                    <ChatColorCard
+                      color={detectedColor}
+                      onSelectColor={(newColor) => {
+                        setSelectedColor(newColor);
+                        void submit(
+                          `אני מעוניין לבדוק את הגוון ${newColor.name} (קוד ${newColor.code} מבית ${newColor.brand}, HEX: ${newColor.hex})`,
+                        );
+                      }}
+                      onOpenPalette={() => setIsPaletteOpen(true)}
+                      screenId={screenId}
+                    />
                   </div>
                 )}
               </div>
@@ -1004,13 +1059,37 @@ ${pOrder.isWeightMismatch ? "⚠️ יש לשים לב: משקל המטען עו
             onChange={(event) => setInput(event.target.value)}
             placeholder="רשום מוצרים, כמויות, סניף מבוקש או שעת הגעה..."
           />
-          <PromptInputFooter className="justify-end">
+          <PromptInputFooter className="justify-between items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsPaletteOpen(true)}
+              className="h-8 text-xs font-bold text-amber-600 dark:text-amber-400 gap-1.5 hover:bg-amber-400/10 rounded-lg px-2"
+              title="פתח מניפת גוונים (טמבור ונירלט)"
+            >
+              <Palette className="size-3.5" />
+              <span>מניפת גוונים</span>
+            </Button>
             <PromptInputSubmit status={status} disabled={!input.trim() || busy}>
               <Send className="size-4" />
             </PromptInputSubmit>
           </PromptInputFooter>
         </PromptInput>
       </div>
+
+      <ColorPaletteModal
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        onSelectColor={(color) => {
+          setIsPaletteOpen(false);
+          setSelectedColor(color);
+          void submit(
+            `🎨 בחרתי במניפה את הגוון: ${color.name} (קוד ${color.code} מבית ${color.brand}, HEX: ${color.hex}) - משפחת ${color.family}. מה הכמויות וסדרת הצבע המומלצת עבור שטח קירות ממוצע, ואיך מבוצע האיסוף בסניף התלמיד 6?`,
+          );
+        }}
+        selectedCode={selectedColor?.code}
+      />
     </>
   );
 }
