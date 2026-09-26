@@ -226,25 +226,26 @@ export function Index() {
 
     const intervalMs = 100;
     const stepIncrement = (intervalMs / (slideDurationSec * 1000)) * 100;
+    let currentProgress = 0;
 
     const timer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          // Check consecutive product rotation for interstitial ad (every 3 slides)
-          setConsecutiveProductCount((count) => {
-            const nextCount = count + 1;
-            if (nextCount >= 3) {
-              setIsCommercialActive(true);
-              setCommercialIndex((cIdx) => (cIdx + 1) % CURATED_COMMERCIAL_VIDEOS.length);
-              return 0;
-            }
-            return nextCount;
-          });
-          setCurrentIndex((idx) => (idx + 1) % products.length);
-          return 0;
-        }
-        return prev + stepIncrement;
-      });
+      currentProgress += stepIncrement;
+      if (currentProgress >= 100) {
+        currentProgress = 0;
+        setProgress(0);
+        setConsecutiveProductCount((count) => {
+          const nextCount = count + 1;
+          if (nextCount >= 3) {
+            setIsCommercialActive(true);
+            setCommercialIndex((cIdx) => (cIdx + 1) % CURATED_COMMERCIAL_VIDEOS.length);
+            return 0;
+          }
+          return nextCount;
+        });
+        setCurrentIndex((idx) => (idx + 1) % products.length);
+      } else {
+        setProgress(currentProgress);
+      }
     }, intervalMs);
 
     return () => clearInterval(timer);

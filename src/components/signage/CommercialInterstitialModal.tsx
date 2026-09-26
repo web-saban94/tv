@@ -44,25 +44,33 @@ export function CommercialInterstitialModal({
   const [videoError, setVideoError] = useState<boolean>(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const onFinishedRef = useRef(onFinished);
+  useEffect(() => {
+    onFinishedRef.current = onFinished;
+  });
+
   // Reset timer on open or ad change
   useEffect(() => {
     if (!isOpen) return;
     setSecondsRemaining(totalDuration);
     setVideoError(false);
 
+    let remaining = totalDuration;
     const interval = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onFinished();
-          return 0;
-        }
-        return prev - 1;
-      });
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setSecondsRemaining(0);
+        setTimeout(() => {
+          onFinishedRef.current();
+        }, 0);
+      } else {
+        setSecondsRemaining(remaining);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isOpen, totalDuration, onFinished, commercialIndex]);
+  }, [isOpen, totalDuration, commercialIndex]);
 
   // Attempt video playback
   useEffect(() => {
@@ -77,11 +85,11 @@ export function CommercialInterstitialModal({
     if (playPromise !== undefined) {
       playPromise.catch(() => {
         v.muted = true;
-        setIsMuted(true);
+        setIsMuted((prev) => (prev ? prev : true));
         v.play().catch(() => setVideoError(true));
       });
     }
-  }, [isOpen, isMuted, currentAd]);
+  }, [isOpen, isMuted, currentAd.streamUrl]);
 
   if (!isOpen) return null;
 
@@ -104,7 +112,11 @@ export function CommercialInterstitialModal({
             poster={currentAd.posterUrl}
             playsInline
             muted={isMuted}
-            onEnded={onFinished}
+            onEnded={() => {
+              setTimeout(() => {
+                onFinishedRef.current();
+              }, 0);
+            }}
             onError={() => setVideoError(true)}
             className="size-full object-cover brightness-90 contrast-105"
           />
@@ -182,7 +194,11 @@ export function CommercialInterstitialModal({
           {/* Quick Skip Button */}
           <Button
             variant="ghost"
-            onClick={onFinished}
+            onClick={() => {
+              setTimeout(() => {
+                onFinishedRef.current();
+              }, 0);
+            }}
             className="rounded-2xl bg-white/15 hover:bg-white/25 text-white border border-white/30 text-xs sm:text-sm font-black px-4 h-10 sm:h-12 gap-1.5 shadow-md active:scale-95"
           >
             <span>חזרה למוצרים</span>
