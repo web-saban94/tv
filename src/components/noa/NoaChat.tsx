@@ -233,14 +233,38 @@ const FALLBACK_PRODUCT: Product = {
   description: "תיאום איסוף עצמי מהיר Click & Collect",
 };
 
-export function NoaChat({ product, screenId }: { product?: Product | null; screenId?: string }) {
+export function NoaChat({
+  product,
+  screenId,
+  isOpen: externalOpen,
+  onOpenChange,
+}: {
+  product?: Product | null;
+  screenId?: string;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const currentProduct = product ?? FALLBACK_PRODUCT;
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = (val: boolean) => {
+    setInternalOpen(val);
+    if (onOpenChange) onOpenChange(val);
+  };
   const [isExpanded, setIsExpanded] = useState(false);
   const [showThreads, setShowThreads] = useState(false);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const bootstrapped = useRef(false);
+
+  useEffect(() => {
+    const handleOpenEvent = () => {
+      setInternalOpen(true);
+      if (onOpenChange) onOpenChange(true);
+    };
+    window.addEventListener("saban:open-noa-chat", handleOpenEvent);
+    return () => window.removeEventListener("saban:open-noa-chat", handleOpenEvent);
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (bootstrapped.current) return;

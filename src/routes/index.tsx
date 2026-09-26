@@ -26,6 +26,12 @@ import {
   Tv,
   Users,
   Film,
+  Wifi,
+  WifiOff,
+  Headset,
+  Radio,
+  Video,
+  Image as ImageIcon,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -33,15 +39,24 @@ import { toast } from "sonner";
 
 import { NoaChat } from "@/components/noa/NoaChat";
 import { PWAInstallButton } from "@/components/pwa/PWAInstallButton";
+import { CommercialInterstitialModal } from "@/components/signage/CommercialInterstitialModal";
 import { FullScreenVideoPlayer } from "@/components/signage/FullScreenVideoPlayer";
 import { VideoLibraryDrawer } from "@/components/signage/VideoLibraryDrawer";
 import { Button } from "@/components/ui/button";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useScreenDimensions } from "@/hooks/useScreenDimensions";
 import {
   clearDispatchQueue,
   DispatchOrder,
   readDispatchQueue,
   whatsappLink,
 } from "@/lib/counter-dispatch";
+import {
+  CURATED_COMMERCIAL_VIDEOS,
+  GOOGLE_DRIVE_FOLDER_NAME,
+  GOOGLE_DRIVE_VIDEOS_FOLDER_ID,
+  preloadCommercialVideo,
+} from "@/lib/driveVideos";
 import { effectivePrice, findProduct, type Product } from "@/lib/products";
 import {
   getStoredVideos,
@@ -129,6 +144,17 @@ export function Index() {
   const currentTransition =
     SLIDE_TRANSITION_EFFECTS[currentIndex % SLIDE_TRANSITION_EFFECTS.length];
 
+  // Screen Dimensions & Fluid Viewport Detection (16:9, 21:9 Ultra-Wide, 4K/8K)
+  const screenDimensions = useScreenDimensions();
+  const isOnline = useOnlineStatus();
+
+  // Commercial Interleaving & Media Rotation state
+  const [consecutiveProductCount, setConsecutiveProductCount] = useState<number>(0);
+  const [isCommercialActive, setIsCommercialActive] = useState<boolean>(false);
+  const [commercialIndex, setCommercialIndex] = useState<number>(0);
+  const [activeMediaSource, setActiveMediaSource] = useState<"image" | "drive_video">("image");
+  const [isNoaChatOpen, setIsNoaChatOpen] = useState<boolean>(false);
+
   // Counter POS queue state
   const [dispatchQueue, setDispatchQueue] = useState<DispatchOrder[]>([]);
   const [isClient, setIsClient] = useState<boolean>(false);
@@ -185,9 +211,15 @@ export function Index() {
 
   const slideDurationSec = currentProduct?.displayDuration || 25;
 
-  // TV & Wide Screen Rotation Timer and Progress Bar
+  // TV & Wide Screen Rotation Timer with Commercial Interleaving (every 3 consecutive products)
   useEffect(() => {
-    if (isPaused || (viewMode !== "tv" && viewMode !== "widescreen") || !products.length) return;
+    if (
+      isPaused ||
+      isCommercialActive ||
+      (viewMode !== "tv" && viewMode !== "widescreen") ||
+      !products.length
+    )
+      return;
 
     const intervalMs = 100;
     const stepIncrement = (intervalMs / (slideDurationSec * 1000)) * 100;
@@ -195,6 +227,16 @@ export function Index() {
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
+          // Check consecutive product rotation for interstitial ad (every 3 slides)
+          setConsecutiveProductCount((count) => {
+            const nextCount = count + 1;
+            if (nextCount >= 3) {
+              setIsCommercialActive(true);
+              setCommercialIndex((cIdx) => (cIdx + 1) % CURATED_COMMERCIAL_VIDEOS.length);
+              return 0;
+            }
+            return nextCount;
+          });
           setCurrentIndex((idx) => (idx + 1) % products.length);
           return 0;
         }
@@ -203,7 +245,13 @@ export function Index() {
     }, intervalMs);
 
     return () => clearInterval(timer);
-  }, [isPaused, slideDurationSec, products.length, viewMode]);
+  }, [isPaused, isCommercialActive, slideDurationSec, products.length, viewMode]);
+
+  const handleCommercialFinished = useCallback(() => {
+    setIsCommercialActive(false);
+    setCurrentIndex((prev) => (prev + 1) % (products.length || 1));
+    setProgress(0);
+  }, [products.length]);
 
   // Reset progress on manual change
   const handleSelectProduct = (index: number) => {
@@ -245,79 +293,153 @@ export function Index() {
   };
 
   // =========================================================================
-  // VIEW MODE: WIDESCREEN LOBBY SIGNAGE (מסך רחב לשילוט לובי - רקע בהיר משולב כהה ומעבר משתנה)
+  // VIEW MODE: WIDESCREEN LOBBY SIGNAGE & ULTRA-WIDE KIOSK (16:9, 21:9, 4K/8K)
   // =========================================================================
   if (viewMode === "widescreen") {
     return (
       <div
         dir="rtl"
-        className="fixed inset-0 w-screen h-screen bg-[#edf0f5] text-slate-900 flex flex-col justify-between overflow-hidden select-none font-sans z-50 bg-[radial-gradient(#cbd5e1_1.2px,transparent_1.2px)] [background-size:26px_26px]"
+        className="fixed inset-0 w-screen h-screen bg-[#0B1320] text-white flex flex-col justify-between overflow-hidden select-none font-sans z-50 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(249,115,22,0.18),rgba(11,19,32,1))]"
       >
-        {/* Top Floating Bar: Luminous Light Header with High-Contrast Dark Elements */}
-        <header className="w-full px-8 py-3 flex items-center justify-between border-b border-slate-300/80 bg-white/95 backdrop-blur-md shadow-xs shrink-0">
+        {/* Top Floating Bar: Modern Sleek Brand Navigation & Live Status Bar */}
+        <header className="w-full px-6 lg:px-10 py-3 flex items-center justify-between border-b border-white/10 bg-[#0B1320]/80 backdrop-blur-xl shadow-2xl shrink-0 z-30">
           <div className="flex items-center gap-4">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500 text-slate-950 font-black text-xl shadow-md border border-amber-600/30">
+            {/* Sleek Logo Badge for ח. סבן חומרי בניין (1994) בע״מ */}
+            <div className="flex size-12 lg:size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#F97316] via-[#EA580C] to-amber-600 text-slate-950 font-black text-xl lg:text-2xl shadow-xl shadow-orange-500/25 border border-amber-300">
               ח.ס
             </div>
             <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl font-black tracking-tight text-slate-950">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-lg lg:text-2xl font-black tracking-tight text-white drop-shadow-md">
                   ח. סבן חומרי בניין (1994) בע״מ
                 </h1>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 text-amber-400 border border-slate-800 px-3 py-0.5 text-xs font-bold shadow-xs">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 px-3 py-0.5 text-xs font-black shadow-xs">
                   שילוט דיגיטלי חכם • {selectedScreen}
                 </span>
-                <span className="hidden lg:inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 text-slate-900 border border-amber-500/30 px-2.5 py-0.5 text-xs font-extrabold shadow-2xs">
-                  <Sparkles className="size-3 text-amber-600" />
-                  אפקט מעבר משתנה: {currentTransition.label}
+                {/* Dynamic Resolution & Aspect Ratio Badge */}
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-white/10 text-slate-200 border border-white/15 px-2.5 py-0.5 text-xs font-mono font-bold shadow-2xs">
+                  🖥️ {screenDimensions.aspectRatioLabel}
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-0.5 font-medium">
-                מרכז חומרי בניין, מליטה, ברזל, איטום וגבס • הוד השרון | שירות קבלנים ואנשי מקצוע
+              <p className="text-xs lg:text-sm text-slate-300 font-medium">
+                מרכז חומרי בניין, מליטה, ברזל, איטום וגבס • החרש 4 & התלמיד 6 הוד השרון
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Dynamic Visual Effect Badge */}
-            <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
-              <span className="text-[11px] text-slate-400 font-normal">אפקט:</span>
-              <span className="font-bold text-slate-900">{currentTransition.label}</span>
+          <div className="flex items-center gap-2.5 lg:gap-3 flex-wrap justify-end">
+            {/* Online / Offline Local Memory Badge */}
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border backdrop-blur-md shadow-2xs ${
+                isOnline
+                  ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                  : "bg-amber-500/10 text-amber-300 border-amber-500/30"
+              }`}
+              title={
+                isOnline
+                  ? "מחובר לרשת סבן ול-Google Sheets"
+                  : "פועל במצב לא מקוון — שמירה בזיכרון מקומי"
+              }
+            >
+              {isOnline ? (
+                <Wifi className="size-3.5 text-emerald-400" />
+              ) : (
+                <WifiOff className="size-3.5 text-amber-400" />
+              )}
+              <span>{isOnline ? "רשת פעילה" : "שמירה בזיכרון מקומי"}</span>
             </div>
 
-            {/* Quick Return to Standard View (Subtle Exit Control) */}
+            {/* Google Drive Folder Sync Tag */}
+            <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 text-slate-300 border border-white/15 text-xs font-medium backdrop-blur-md">
+              <Film className="size-3.5 text-amber-400" />
+              <span>Google Drive: {GOOGLE_DRIVE_FOLDER_NAME}</span>
+            </div>
+
+            {/* Commercial Interleaving Countdown Pill (Click to Trigger Immediately) */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsCommercialActive(true);
+                setCommercialIndex((idx) => (idx + 1) % CURATED_COMMERCIAL_VIDEOS.length);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-600/30 to-amber-500/30 text-amber-300 hover:text-white border border-amber-500/40 hover:bg-orange-600/40 transition-all shadow-xs active:scale-95"
+              title="מעברון שידור תדמית מלא מופעל אוטומטית כל 3 שקופיות מוצר"
+            >
+              <Radio className="size-3.5 text-amber-400 animate-pulse" />
+              <span>מעברון: בעוד {Math.max(1, 3 - consecutiveProductCount)}</span>
+            </button>
+
+            {/* Media Source Switcher (Image vs Drive Video) */}
+            <button
+              type="button"
+              onClick={() =>
+                setActiveMediaSource((src) => (src === "image" ? "drive_video" : "image"))
+              }
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all shadow-2xs"
+              title="החלף בין תמונת אריזה לווידאו לופ מ-Google Drive"
+            >
+              {activeMediaSource === "image" ? (
+                <>
+                  <Video className="size-3.5 text-amber-400" />
+                  <span className="hidden md:inline">וידאו לופ</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="size-3.5 text-amber-400" />
+                  <span className="hidden md:inline">תמונת אריזה</span>
+                </>
+              )}
+            </button>
+
+            {/* Play / Pause Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsPaused((p) => !p)}
+              className="flex items-center justify-center size-9 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all shadow-2xs"
+              title={isPaused ? "המשך רוטציה" : "השהה רוטציה"}
+              aria-label={isPaused ? "המשך רוטציה" : "השהה רוטציה"}
+            >
+              {isPaused ? <Play className="size-4 text-amber-400" /> : <Pause className="size-4" />}
+            </button>
+
+            {/* Quick Exit to TV Mode */}
             <button
               type="button"
               onClick={() => setViewMode("tv")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 border border-white/15 transition-colors shadow-2xs"
               title="יציאה ממצב מסך רחב"
             >
               <Minimize2 className="size-3.5" />
-              <span>יציאה ממסך רחב</span>
+              <span className="hidden md:inline">יציאה</span>
             </button>
 
-            <div className="text-left font-mono text-xs font-bold bg-slate-900 text-amber-400 px-3 py-1.5 rounded-xl shadow-xs">
+            {/* Slide Counter */}
+            <div className="font-mono text-xs font-bold bg-black/60 text-amber-400 px-3 py-1.5 rounded-xl border border-white/15 shadow-xs">
               {products.length > 0 ? `${currentIndex + 1}/${products.length}` : "—"}
             </div>
           </div>
         </header>
 
-        {/* Top Subtle Slide Progress Line */}
-        <div className="w-full h-1.5 bg-slate-300/80 overflow-hidden shrink-0">
+        {/* Top Slide Progress Bar */}
+        <div className="w-full h-1.5 bg-black/50 overflow-hidden shrink-0 z-20">
           <div
-            className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 transition-all duration-100 ease-linear shadow-xs"
+            className="h-full bg-gradient-to-r from-amber-400 via-[#F97316] to-orange-600 transition-all duration-100 ease-linear shadow-sm"
             style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Loading State in Wide Screen */}
         {(!currentProduct || isLoading) && (
-          <main className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="size-20 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center animate-pulse mb-6 shadow-sm">
+          <main className="flex-1 flex flex-col items-center justify-center p-8 text-center z-10">
+            <div className="size-20 rounded-3xl bg-orange-500/10 text-orange-400 flex items-center justify-center animate-pulse mb-6 shadow-sm border border-orange-500/20">
               <Package className="size-10" />
             </div>
-            <h2 className="text-2xl font-black text-slate-950">טוען נתונים חיים מגיליון סבן...</h2>
-            <p className="text-sm text-slate-500 mt-2">סנכרון ישיר מול קטלוג מוצרים הרשמי</p>
+            <h2 className="text-2xl lg:text-3xl font-black text-white">
+              טוען נתונים חיים מקטלוג סבן...
+            </h2>
+            <p className="text-sm text-slate-400 mt-2">
+              סנכרון ישיר מול Google Sheets ו-Google Drive
+            </p>
           </main>
         )}
 
@@ -325,71 +447,124 @@ export function Index() {
         {currentProduct && !isLoading && (
           <main
             key={currentProduct.sku + "-" + currentIndex}
-            className={`flex-1 px-8 py-5 grid grid-cols-12 gap-7 items-stretch min-h-0 overflow-hidden ${currentTransition.className} relative`}
+            className={`flex-1 px-6 lg:px-10 py-5 grid grid-cols-12 gap-6 lg:gap-8 items-stretch min-h-0 overflow-hidden ${currentTransition.className} relative z-10`}
           >
             {/* Subtle light sheen passing sweep on slide transition */}
             <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-              <div className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent animate-sweep-shine" />
+              <div className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-sweep-shine" />
             </div>
 
-            {/* Left 8 Columns: Hero Packaging Visual, Spec Highlights & Sheet Data Row */}
-            <div className="col-span-8 flex flex-col justify-between rounded-3xl border border-slate-300/90 bg-white p-7 shadow-xl relative overflow-hidden">
+            {/* Left 8 Columns (or 9 on 21:9 Ultra-Wide): Hero Visual, Specs, Description & Highlights */}
+            <div
+              className={`${
+                screenDimensions.isUltraWide ? "col-span-9" : "col-span-8"
+              } flex flex-col justify-between rounded-3xl border border-white/15 bg-gradient-to-b from-[#0e192c] via-[#0B1320] to-[#0e192c] p-6 lg:p-8 shadow-2xl relative overflow-hidden backdrop-blur-md`}
+            >
               {/* Product Badge Strip */}
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-xl bg-slate-900 text-white font-bold text-xs px-3.5 py-1.5 shadow-xs">
+                  <span className="rounded-xl bg-orange-500 text-slate-950 font-black text-xs lg:text-sm px-3.5 py-1.5 shadow-md">
                     {currentProduct.category}
                   </span>
-                  <span className="text-sm font-bold text-slate-800">
-                    מותג: <strong className="text-slate-950">{currentProduct.brand}</strong>
+                  <span className="text-xs lg:text-sm font-bold text-slate-300">
+                    מותג:{" "}
+                    <strong className="text-white text-sm lg:text-base">
+                      {currentProduct.brand}
+                    </strong>
+                  </span>
+                  <span className="hidden sm:inline-flex rounded-lg bg-white/10 text-slate-300 px-2.5 py-1 text-xs font-medium">
+                    {currentProduct.preferredWarehouse || "סניף החרש / סניף התלמיד"}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm bg-amber-500 text-slate-950 px-3 py-1 rounded-xl font-black border border-amber-600/30 shadow-xs">
+                  <span className="font-mono text-xs lg:text-sm bg-black/60 text-amber-400 px-3 py-1.5 rounded-xl font-black border border-white/15 shadow-xs">
                     מק״ט: {currentProduct.sku}
                   </span>
                 </div>
               </div>
 
-              {/* Center Stage: High-Contrast Dark Podium for Product Photo + Details */}
-              <div className="my-auto grid grid-cols-12 gap-7 items-center py-3">
-                {/* Product Photo Render on High-Contrast Deep Dark Podium */}
-                <div className="col-span-5 flex items-center justify-center p-6 rounded-2xl bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-slate-800 shadow-xl relative overflow-hidden group min-h-[300px]">
-                  {/* Subtle Amber Spotlight Glow */}
-                  <div className="absolute inset-0 bg-radial from-amber-500/15 via-transparent to-transparent pointer-events-none" />
-                  <div className="relative z-10">
-                    <img
-                      src={currentProduct.image}
-                      alt={currentProduct.name}
-                      onError={(e) => {
-                        const target = e.currentTarget as HTMLImageElement;
-                        if (!target.src.includes("/assets/product-adhesive-bag.jpg")) {
-                          target.src = "/assets/product-adhesive-bag.jpg";
-                        }
-                      }}
-                      className="max-h-[290px] w-auto object-contain drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)] transition-transform duration-700 hover:scale-105"
-                    />
-                    {currentProduct.discountTag && (
-                      <div className="absolute -top-3 -right-3 rounded-xl bg-amber-500 text-slate-950 font-black text-xs px-3.5 py-1.5 shadow-lg">
-                        {currentProduct.discountTag}
-                      </div>
-                    )}
+              {/* Center Stage: Hero Product Media Podium + Typography */}
+              <div className="my-auto grid grid-cols-12 gap-6 lg:gap-8 items-center py-2">
+                {/* Media Podium (Col 5) */}
+                <div className="col-span-5 flex flex-col items-center justify-center p-6 rounded-3xl bg-gradient-to-b from-black/80 via-[#0B1320] to-black/80 border border-white/15 shadow-2xl relative overflow-hidden group min-h-[290px] lg:min-h-[340px]">
+                  {/* Amber Spotlight Glow */}
+                  <div className="absolute inset-0 bg-radial from-orange-500/20 via-transparent to-transparent pointer-events-none" />
+
+                  {/* Media Content: Image vs Drive Video Loop */}
+                  {activeMediaSource === "image" ? (
+                    <div className="relative z-10 flex items-center justify-center size-full">
+                      <img
+                        src={currentProduct.image}
+                        alt={currentProduct.name}
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (!target.src.includes("/assets/product-adhesive-bag.jpg")) {
+                            target.src = "/assets/product-adhesive-bag.jpg";
+                          }
+                        }}
+                        className="max-h-[270px] lg:max-h-[310px] w-auto object-contain drop-shadow-[0_25px_40px_rgba(0,0,0,0.9)] animate-ken-burns transition-transform duration-700"
+                      />
+                      {currentProduct.discountTag && (
+                        <div className="absolute -top-2 -right-2 rounded-xl bg-orange-500 text-slate-950 font-black text-xs lg:text-sm px-3 py-1 shadow-xl border border-amber-300">
+                          {currentProduct.discountTag}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative z-10 size-full flex items-center justify-center">
+                      <video
+                        src={currentProduct.mediaUrl || "/videos/saban-builders.mp4"}
+                        poster={currentProduct.image}
+                        playsInline
+                        muted
+                        autoPlay
+                        loop
+                        className="max-h-[270px] lg:max-h-[310px] w-full rounded-2xl object-cover shadow-2xl"
+                      />
+                      <span className="absolute bottom-2 left-2 rounded-md bg-black/70 text-amber-400 text-[10px] font-bold px-2 py-0.5 border border-white/20">
+                        Google Drive Video Loop
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Stage Media Switcher Chip */}
+                  <div className="absolute bottom-2.5 right-2.5 z-20">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveMediaSource((src) => (src === "image" ? "drive_video" : "image"))
+                      }
+                      className="px-2.5 py-1 rounded-lg bg-black/60 hover:bg-black/80 text-slate-200 border border-white/20 text-[10px] font-bold backdrop-blur-md transition-colors flex items-center gap-1"
+                    >
+                      {activeMediaSource === "image" ? (
+                        <>
+                          <Video className="size-3 text-amber-400" />
+                          <span>צפה בווידאו</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="size-3 text-amber-400" />
+                          <span>צפה באריזה</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 
-                {/* Product Typography & Deep Contrast "Ask the Desk" Price Line */}
-                <div className="col-span-7 space-y-4">
-                  <h2 className="text-3xl lg:text-4xl font-black text-slate-950 leading-tight tracking-tight">
+                {/* Product Typography & Contractor Price Line (Col 7) */}
+                <div className="col-span-7 space-y-4 text-right">
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-md">
                     {currentProduct.name}
                   </h2>
 
-                  <p className="text-base text-slate-700 leading-relaxed font-normal">
-                    {currentProduct.marketingPhrase}
+                  <p className="text-sm lg:text-base text-slate-300 leading-relaxed font-normal line-clamp-3">
+                    {currentProduct.marketingPhrase || currentProduct.description}
                   </p>
 
-                  {/* PRICE REPLACEMENT: High-Impact Dark Contrast Box */}
-                  <div className="rounded-2xl bg-slate-900 text-white p-5 border border-slate-800 shadow-xl space-y-1.5">
+                  {/* PRICE & CONTRACTOR SPECIAL BOX: Deep Contrast Industrial Navy */}
+                  <div className="rounded-2xl bg-gradient-to-r from-black/80 to-[#0e192c] text-white p-4 lg:p-5 border border-amber-500/30 shadow-xl space-y-1.5 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 h-full w-1.5 bg-gradient-to-b from-orange-400 to-amber-500" />
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block">
                       מחיר ומבצעי קבלנים:
                     </span>
@@ -397,62 +572,70 @@ export function Index() {
                       <span className="text-3xl lg:text-4xl font-black text-amber-400 tracking-tight">
                         שאל את הדלפק
                       </span>
-                      <span className="text-sm text-slate-300 font-medium">
+                      <span className="text-xs lg:text-sm text-slate-300 font-medium">
                         ל{currentProduct.unitLabel}{" "}
                         {currentProduct.unitWeight ? `(${currentProduct.unitWeight})` : ""}
                       </span>
                     </div>
                     <div className="text-xs text-amber-300/90 font-medium flex items-center gap-1.5 pt-0.5">
                       <Users className="size-3.5" />
-                      <span>מחיר מיוחד לקבלנים בהתאמה לכמויות הפרויקט</span>
+                      <span>מחיר מיוחד לקבלנים בהתאמה לכמויות הפרויקט ואספקה ישירה</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Technical Highlights Quick Strip */}
-              <div className="grid grid-cols-4 gap-3 pt-3 border-t border-slate-200">
-                <div className="rounded-2xl bg-slate-100/90 border border-slate-200/90 p-3 text-center shadow-2xs">
-                  <span className="text-xs text-slate-500 block font-medium">כושר כיסוי</span>
-                  <span className="text-lg font-black text-slate-950">
-                    {currentProduct.coveragePerUnitM2} מ״ר
+              {/* 4 Technical Highlights Quick Strip */}
+              <div className="grid grid-cols-4 gap-3 pt-3 border-t border-white/10">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center shadow-xs">
+                  <span className="text-[11px] lg:text-xs text-slate-400 block font-medium">
+                    כושר כיסוי
                   </span>
-                  <span className="text-[11px] text-slate-500 block">
+                  <span className="text-base lg:text-xl font-black text-white">
+                    {currentProduct.coveragePerUnitM2
+                      ? `${currentProduct.coveragePerUnitM2} מ״ר`
+                      : "לפי מפרט"}
+                  </span>
+                  <span className="text-[10px] text-slate-400 block">
                     ל{currentProduct.unitLabel}
                   </span>
                 </div>
 
-                <div className="rounded-2xl bg-slate-100/90 border border-slate-200/90 p-3 text-center shadow-2xs">
-                  <span className="text-xs text-slate-500 block font-medium">זמן פתוח / עבודה</span>
-                  <span className="text-lg font-black text-slate-950 truncate block">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center shadow-xs">
+                  <span className="text-[11px] lg:text-xs text-slate-400 block font-medium">
+                    זמן פתוח / עבודה
+                  </span>
+                  <span className="text-base lg:text-xl font-black text-white truncate block">
                     {currentProduct.openTime || currentProduct.potLife || "מיידי"}
                   </span>
-                  <span className="text-[11px] text-slate-500 block">בדלי ועל מצע</span>
+                  <span className="text-[10px] text-slate-400 block">בדלי ועל מצע</span>
                 </div>
 
-                <div className="rounded-2xl bg-slate-100/90 border border-slate-200/90 p-3 text-center shadow-2xs">
-                  <span className="text-xs text-slate-500 block font-medium">זמן ייבוש</span>
-                  <span className="text-lg font-black text-slate-950 truncate block">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center shadow-xs">
+                  <span className="text-[11px] lg:text-xs text-slate-400 block font-medium">
+                    זמן ייבוש
+                  </span>
+                  <span className="text-base lg:text-xl font-black text-white truncate block">
                     {currentProduct.dryingTime?.split(",")[0] || "24 שעות"}
                   </span>
-                  <span className="text-[11px] text-slate-500 block">הליכה / שכבה הבאה</span>
+                  <span className="text-[10px] text-slate-400 block">שכבה הבאה</span>
                 </div>
 
-                <div className="rounded-2xl bg-slate-100/90 border border-slate-200/90 p-3 text-center shadow-2xs">
-                  <span className="text-xs text-slate-500 block font-medium">
-                    תקן ישראלי/אירופי
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 text-center shadow-xs">
+                  <span className="text-[11px] lg:text-xs text-slate-400 block font-medium">
+                    תקן רשמי
                   </span>
-                  <span className="text-lg font-black text-slate-950 truncate block">
+                  <span className="text-base lg:text-xl font-black text-white truncate block">
                     {currentProduct.standard || "תקן סבן"}
                   </span>
-                  <span className="text-[11px] text-slate-500 block">בדיקות מעבדה</span>
+                  <span className="text-[10px] text-slate-400 block">אישור מעבדה</span>
                 </div>
               </div>
 
-              {/* SPEC DETAILS ROW FROM SHEET (Deep Contrast Banner) */}
-              <div className="mt-3.5 rounded-2xl bg-slate-900 text-slate-100 border border-slate-800 px-4 py-3 flex items-center justify-between gap-4 flex-wrap shadow-md">
+              {/* Specification Details Row */}
+              <div className="mt-3.5 rounded-2xl bg-black/60 text-slate-100 border border-white/10 px-4 py-3 flex items-center justify-between gap-4 flex-wrap shadow-md">
                 <div className="flex items-center gap-3 text-xs text-slate-300">
-                  <span className="font-bold text-slate-950 bg-amber-500 px-2.5 py-1 rounded-lg">
+                  <span className="font-bold text-slate-950 bg-amber-400 px-2.5 py-1 rounded-lg">
                     מפרט מגליון:
                   </span>
                   <span>
@@ -472,64 +655,120 @@ export function Index() {
                   )}
                 </div>
 
-                {/* CALL TO ACTION: שאל את נציג הדלפק */}
-                <div className="flex items-center gap-2 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 px-3.5 py-1.5 rounded-xl shadow-xs transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setIsNoaChatOpen(true)}
+                  className="flex items-center gap-2 text-xs font-black text-slate-950 bg-amber-400 hover:bg-amber-300 px-3.5 py-1.5 rounded-xl shadow-xs transition-colors active:scale-95"
+                >
                   <PhoneCall className="size-4 animate-bounce" />
-                  <span>שאל את נציג הדלפק לפרטים מלאים והזמנה</span>
-                </div>
+                  <span>שאל את נועה והדלפק לפרטים מלאים והזמנה</span>
+                </button>
               </div>
             </div>
 
-            {/* Right 4 Columns: Massive High-Contrast QR Code in Dark Contrast Tower */}
-            <div className="col-span-4 flex flex-col justify-between rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 p-7 shadow-2xl text-center text-white relative overflow-hidden">
+            {/* Right Columns (Col 4, or Col 3 on 21:9): "נועה" & QR Interactive Kiosk Tower */}
+            <div
+              className={`${
+                screenDimensions.isUltraWide ? "col-span-3" : "col-span-4"
+              } flex flex-col justify-between rounded-3xl border border-white/15 bg-gradient-to-b from-[#0B1320] via-black/80 to-[#0B1320] p-6 lg:p-7 shadow-2xl text-center text-white relative overflow-hidden backdrop-blur-md`}
+            >
               {/* Corner Ambient Glow */}
-              <div className="absolute top-0 right-0 size-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute top-0 right-0 size-32 bg-orange-500/15 rounded-full blur-2xl pointer-events-none" />
 
-              <div className="space-y-2.5 relative z-10">
-                <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 px-4 py-1.5 text-xs font-bold shadow-xs">
-                  <QrCode className="size-4" />
-                  <span>סריקה מהירה בנייד</span>
+              {/* Noa Profile Avatar & Status Badge */}
+              <div className="space-y-3 relative z-10">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="relative size-14 lg:size-16 rounded-2xl overflow-hidden border-2 border-amber-400 shadow-xl bg-amber-400">
+                    <img
+                      src="https://saban-smart-signage.vercel.app/assets/noa-avatar.png"
+                      alt="נועה נציגת דלפק ראשית"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.style.display = "none";
+                      }}
+                      className="size-full object-cover"
+                    />
+                    <span className="absolute bottom-0 right-0 size-3.5 rounded-full bg-emerald-500 border-2 border-[#0B1320]" />
+                  </div>
+                  <div className="text-right">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 px-3 py-0.5 text-xs font-black">
+                      <Sparkles className="size-3 text-amber-400" />
+                      <span>נועה • שירות ודלפק</span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-semibold mt-0.5">
+                      נציגת דלפק וסדרנות ראשית
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-2xl lg:text-3xl font-black text-white">
-                  סרוק עכשיו למפרט טכני
+
+                <h3 className="text-xl lg:text-2xl font-black text-white">
+                  סרוק עכשיו למפרט ומחשבון
                 </h3>
-                <p className="text-sm text-slate-400 max-w-xs mx-auto">
-                  פתח את מצלמת הנייד וכיוון לקוד: גישה ישירה למפרט, מחשבון כמויות וייעוץ
+                <p className="text-xs text-slate-300 max-w-xs mx-auto">
+                  פתח את מצלמת הנייד: חישוב כמויות מדויק, צבעים וסגירת הזמנה מהירה
                 </p>
               </div>
 
               {/* Giant QR Card */}
               <div className="my-auto flex flex-col items-center justify-center relative z-10">
-                <div className="rounded-3xl bg-white p-5 shadow-2xl flex items-center justify-center border-4 border-slate-800/80">
+                <div className="rounded-3xl bg-white p-4 lg:p-5 shadow-2xl flex items-center justify-center border-4 border-slate-700/80 hover:scale-105 transition-transform">
                   {isClient ? (
-                    <QRCodeSVG value={qrUrl} size={240} level="Q" includeMargin={false} />
+                    <QRCodeSVG
+                      value={qrUrl}
+                      size={screenDimensions.isUltraWide ? 190 : 210}
+                      level="Q"
+                      includeMargin={false}
+                    />
                   ) : (
-                    <div className="size-[240px] rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400">
-                      <QrCode className="size-20 opacity-40 animate-pulse" />
+                    <div className="size-[200px] rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400">
+                      <QrCode className="size-16 opacity-40 animate-pulse" />
                     </div>
                   )}
                 </div>
-                <span className="text-xs text-amber-400 mt-3 font-mono font-bold tracking-wider">
+                <span className="text-[11px] text-amber-400 mt-2.5 font-mono font-bold tracking-wider">
                   מק״ט: {currentProduct.sku} • {selectedScreen}
                 </span>
               </div>
 
-              {/* Bottom Large Prompt */}
-              <div className="rounded-2xl bg-amber-500 text-slate-950 p-4 text-center shadow-lg font-black relative z-10">
-                <p className="text-base font-black">יש לך שאלה? שאל את נציג הדלפק</p>
-                <p className="text-xs text-slate-900/80 font-semibold mt-1">
-                  הנציגים שלנו כאן לרשותך להתאמת חומרים, כמויות ומחיר קבלן
-                </p>
+              {/* Interactive Kiosk Buttons: Chat with Noa & WhatsApp */}
+              <div className="space-y-2 pt-2 relative z-10">
+                {/* Direct Chat with Noa Modal */}
+                <button
+                  type="button"
+                  onClick={() => setIsNoaChatOpen(true)}
+                  className="w-full h-11 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs lg:text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+                >
+                  <MessageCircle className="size-4" />
+                  <span>שאל את נועה בצ&apos;אט ישיר 💬</span>
+                </button>
+
+                {/* WhatsApp Quick Dispatch */}
+                <a
+                  href={whatsappLink(
+                    `שלום נועה, אני נמצא מול עמדת השילוט בסבן ומעוניין בייעוץ והזמנה של ${currentProduct.name} (מק״ט ${currentProduct.sku}).`,
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <span>שאל בווטסאפ לדלפק 📲</span>
+                </a>
+
+                <div className="pt-1 text-[10px] text-slate-400 flex justify-between">
+                  <span>סניף החרש 4: איציק (050-4482285)</span>
+                  <span>התלמיד 6: יואב (050-7855865)</span>
+                </div>
               </div>
             </div>
           </main>
         )}
 
         {/* Bottom Ticker Line: Sleek Dark Contrast Strip */}
-        <footer className="w-full px-8 py-2.5 bg-slate-900 text-slate-300 border-t border-slate-800 flex items-center justify-between text-xs shrink-0">
+        <footer className="w-full px-6 lg:px-10 py-3 bg-[#0B1320] text-slate-300 border-t border-white/10 flex items-center justify-between text-xs shrink-0 z-30">
           <div className="flex items-center gap-6">
             <span className="font-bold text-white">
-              ח. סבן הוד השרון: סניף החרש 4 (מגרש ראשי) | סניף התלמיד 6 (גבס וצבע)
+              ח. סבן הוד השרון: סניף החרש 4 (מגרש ראשי לחומרים כבדים) | סניף התלמיד 6 (אולם גבס, צבע
+              ופרזול)
             </span>
             <span className="hidden md:inline text-slate-400">
               • מחיר המוצר: שאל את הדלפק לקבלת הצעת מחיר מדויקת
@@ -544,6 +783,22 @@ export function Index() {
             <span className="text-slate-400">החלפת שקופית כל {slideDurationSec} שניות</span>
           </div>
         </footer>
+
+        {/* Full-Frame Interstitial Commercial Overlay (10-15s, triggered every 3 products) */}
+        <CommercialInterstitialModal
+          isOpen={isCommercialActive}
+          onFinished={handleCommercialFinished}
+          commercialIndex={commercialIndex}
+          folderId={GOOGLE_DRIVE_VIDEOS_FOLDER_ID}
+        />
+
+        {/* Floating Noa AI Assistant Widget */}
+        <NoaChat
+          product={currentProduct}
+          screenId={selectedScreen}
+          isOpen={isNoaChatOpen}
+          onOpenChange={setIsNoaChatOpen}
+        />
       </div>
     );
   }
@@ -1141,8 +1396,21 @@ export function Index() {
         </main>
       )}
 
+      {/* Full-Frame Interstitial Commercial Overlay (10-15s, triggered every 3 products) */}
+      <CommercialInterstitialModal
+        isOpen={isCommercialActive}
+        onFinished={handleCommercialFinished}
+        commercialIndex={commercialIndex}
+        folderId={GOOGLE_DRIVE_VIDEOS_FOLDER_ID}
+      />
+
       {/* Floating Noa AI Assistant Widget */}
-      <NoaChat product={currentProduct} screenId={selectedScreen} />
+      <NoaChat
+        product={currentProduct}
+        screenId={selectedScreen}
+        isOpen={isNoaChatOpen}
+        onOpenChange={setIsNoaChatOpen}
+      />
     </div>
   );
 }

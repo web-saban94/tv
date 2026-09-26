@@ -261,6 +261,22 @@
   animation: sweep-shine 1s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+  100% {
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+@utility animate-ken-burns {
+  animation: ken-burns 16s ease-in-out infinite alternate;
+}
+
 div:nth-of-type(2)
   > div:nth-of-type(1)
   > div:nth-of-type(1)
