@@ -37,6 +37,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { toast } from "sonner";
 
+import { ClientAppView } from "@/components/client/ClientAppView";
 import { NoaChat } from "@/components/noa/NoaChat";
 import { PWAInstallButton } from "@/components/pwa/PWAInstallButton";
 import { CommercialInterstitialModal } from "@/components/signage/CommercialInterstitialModal";
@@ -88,7 +89,7 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type ScreenMode = "tv" | "pos" | "widescreen";
+type ScreenMode = "tv" | "pos" | "widescreen" | "client";
 
 export const SLIDE_TRANSITION_EFFECTS = [
   {
@@ -137,7 +138,7 @@ export function Index() {
   const [progress, setProgress] = useState<number>(0);
   const [selectedScreen, setSelectedScreen] = useState<string>(search.screen || "מסך לובי מרכזי");
   const [viewMode, setViewMode] = useState<ScreenMode>(
-    search.mode === "widescreen" ? "widescreen" : "tv",
+    search.mode === "client" ? "client" : search.mode === "widescreen" ? "widescreen" : "tv",
   );
 
   // Dynamic changing transition effect based on current slide index
@@ -165,7 +166,9 @@ export function Index() {
 
   // Sync mode from search params if present
   useEffect(() => {
-    if (search.mode === "widescreen") {
+    if (search.mode === "client") {
+      setViewMode("client");
+    } else if (search.mode === "widescreen") {
       setViewMode("widescreen");
     }
   }, [search.mode]);
@@ -291,6 +294,13 @@ export function Index() {
     setDispatchQueue([]);
     toast.info("תור ההזמנות אופס בהצלחה");
   };
+
+  // =========================================================================
+  // VIEW MODE: CLIENT APP (Pure Customer-Facing, Dev Stripped, Full Screen)
+  // =========================================================================
+  if (viewMode === "client") {
+    return <ClientAppView />;
+  }
 
   // =========================================================================
   // VIEW MODE: WIDESCREEN LOBBY SIGNAGE & ULTRA-WIDE KIOSK (16:9, 21:9, 4K/8K)
@@ -873,6 +883,19 @@ export function Index() {
                   {dispatchQueue.length}
                 </span>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode("client")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === "client"
+                  ? "bg-orange-500 text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-950"
+              }`}
+            >
+              <Smartphone className="size-3.5 text-orange-500" />
+              <span>אפליקציית לקוח</span>
             </button>
 
             {currentProduct ? (
